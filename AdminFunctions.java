@@ -37,9 +37,10 @@ public class AdminFunctions {
 		}
 		catch (SQLIntegrityConstraintViolationException iCV) {
 			System.out.println("User already exists.");
+			SQLFunctions.closeAll(con, stmt, pstmt);
 		}
 		catch (SQLException ex) {
-			SQLFunctions.defaultError(ex);
+			SQLFunctions.defaultError(ex, con, stmt, pstmt);
 		}
 		finally {
 			SQLFunctions.closeAll(con, stmt, pstmt);
@@ -61,7 +62,7 @@ public class AdminFunctions {
 			System.out.println("Updated successfully.");
 		}
 		catch (SQLException ex) {
-			SQLFunctions.defaultError(ex);
+			SQLFunctions.defaultError(ex, con, stmt, pstmt);
 		}
 		finally {
 			SQLFunctions.closeAll(con, stmt, pstmt);
@@ -85,7 +86,7 @@ public class AdminFunctions {
 				System.out.println("Cannot remove own account.");
 		}
 		catch (SQLException ex) {
-			SQLFunctions.defaultError(ex);
+			SQLFunctions.defaultError(ex, con, stmt, pstmt);
 		}
 		finally {
 			SQLFunctions.closeAll(con, stmt, pstmt);
@@ -107,9 +108,10 @@ public class AdminFunctions {
 		}
 		catch (SQLIntegrityConstraintViolationException iCV) {
 			System.out.println("Department already exists.");
+			SQLFunctions.closeAll(con, stmt, pstmt);
 		}
 		catch (SQLException ex) {
-			SQLFunctions.defaultError(ex);
+			SQLFunctions.defaultError(ex, con, stmt, pstmt);
 		}
 		finally {
 			SQLFunctions.closeAll(con, stmt, pstmt);
@@ -129,7 +131,7 @@ public class AdminFunctions {
 			System.out.println("Department removed successfully.");
 		}
 		catch (SQLException ex) {
-			SQLFunctions.defaultError(ex);
+			SQLFunctions.defaultError(ex, con, stmt, pstmt);
 		}
 		finally {
 			SQLFunctions.closeAll(con, stmt, pstmt);
@@ -151,9 +153,10 @@ public class AdminFunctions {
 		}
 		catch (SQLIntegrityConstraintViolationException iCV) {
 			System.out.println("Degree course already exists.");
+			SQLFunctions.closeAll(con, stmt, pstmt);
 		}
 		catch (SQLException ex) {
-			SQLFunctions.defaultError(ex);
+			SQLFunctions.defaultError(ex, con, stmt, pstmt);
 		}
 		finally {
 			SQLFunctions.closeAll(con, stmt, pstmt);
@@ -173,7 +176,33 @@ public class AdminFunctions {
 			System.out.println("Degree course removed successfully.");
 		}
 		catch (SQLException ex) {
-			SQLFunctions.defaultError(ex);
+			SQLFunctions.defaultError(ex, con, stmt, pstmt);
+		}
+		finally {
+			SQLFunctions.closeAll(con, stmt, pstmt);
+		}
+	}
+	
+	/**
+	 * Function employed to assign a department or departments to a degree course.
+	 */
+	public static void assignDegreeDepartment(String DegreeCode, String Dept, int isPrimary) throws SQLException {
+		try {
+			con = SQLFunctions.connectToDatabase();
+			pstmt = con.prepareStatement(
+					"INSERT INTO DegreeDepartments VALUES (?, ?, ?)");
+			pstmt.setString(1, DegreeCode);
+			pstmt.setString(2, Dept);
+			pstmt.setInt(3, isPrimary);
+			pstmt.executeUpdate();
+			System.out.println("Department assigned successfully.");
+		}
+		catch (SQLIntegrityConstraintViolationException iCV) {
+			System.out.println("Degree already assigned to this department.");
+			SQLFunctions.closeAll(con, stmt, pstmt);
+		}
+		catch (SQLException ex) {
+			SQLFunctions.defaultError(ex, con, stmt, pstmt);
 		}
 		finally {
 			SQLFunctions.closeAll(con, stmt, pstmt);
@@ -183,24 +212,25 @@ public class AdminFunctions {
 	/**
 	 * Function employed to add modules.
 	 */
-	public static void addModule(String ModuleID, String ModuleTitle, String Dept, int Credits, int TimePeriod) throws SQLException {
+	public static void addModule(String ModuleID, String Dept, int Credits, String TimePeriod, String ModuleTitle) throws SQLException {
 		try {
 			con = SQLFunctions.connectToDatabase();
 			pstmt = con.prepareStatement(
-					"INSERT INTO Degree VALUES (?, ?, ?, ?, ?)");
+					"INSERT INTO Module VALUES (?, ?, ?, ?, ?)");
 			pstmt.setString(1, ModuleID);
-			pstmt.setString(2, ModuleTitle);
-			pstmt.setString(3, Dept);
-			pstmt.setInt(4, Credits);
-			pstmt.setInt(5, TimePeriod);
+			pstmt.setString(2, Dept);
+			pstmt.setInt(3, Credits);
+			pstmt.setString(4, TimePeriod);
+			pstmt.setString(5, ModuleTitle);
 			pstmt.executeUpdate();
 			System.out.println("Module added successfully.");
 		}
 		catch (SQLIntegrityConstraintViolationException iCV) {
 			System.out.println("Module already exists.");
+			SQLFunctions.closeAll(con, stmt, pstmt);
 		}
 		catch (SQLException ex) {
-			SQLFunctions.defaultError(ex);
+			SQLFunctions.defaultError(ex, con, stmt, pstmt);
 		}
 		finally {
 			SQLFunctions.closeAll(con, stmt, pstmt);
@@ -220,10 +250,64 @@ public class AdminFunctions {
 			System.out.println("Module removed successfully.");
 		}
 		catch (SQLException ex) {
-			SQLFunctions.defaultError(ex);
+			SQLFunctions.defaultError(ex, con, stmt, pstmt);
 		}
 		finally {
 			SQLFunctions.closeAll(con, stmt, pstmt);
 		}
-	}	
+	}
+	
+	// Not yet tested functions below this point.
+	/**
+	 * Function employed to assign modules to their degree courses.
+	 */
+	public static void assignModuleDegree(String ModuleID, String DegreeLevel, String Core) throws SQLException {
+		try {
+			con = SQLFunctions.connectToDatabase();
+			pstmt = con.prepareStatement(
+					"INSERT INTO DegreeModule VALUES (?, ?, ?)");
+			pstmt.setString(1, ModuleID);
+			pstmt.setString(2, DegreeLevel);
+			pstmt.setString(3, Core);
+			pstmt.executeUpdate();
+			System.out.println("Module assigned successfully.");
+		}
+		catch (SQLIntegrityConstraintViolationException iCV) {
+			System.out.println("Module already assigned to this degree.");
+			SQLFunctions.closeAll(con, stmt, pstmt);
+		}
+		catch (SQLException ex) {
+			SQLFunctions.defaultError(ex, con, stmt, pstmt);
+		}
+		finally {
+			SQLFunctions.closeAll(con, stmt, pstmt);
+		}
+	}
+	
+	/**
+	 * Function employed to assign degree courses their modules. 
+	 */
+	public static void assignDegreeModules(String DegreeLevel, String DegreeCode, String Level) throws SQLException {
+		try {
+			con = SQLFunctions.connectToDatabase();
+			pstmt = con.prepareStatement(
+					"INSERT INTO DegreeLevel VALUES (?, ?, ?)");
+			pstmt.setString(1, DegreeLevel);
+			pstmt.setString(2, DegreeCode);
+			pstmt.setString(3, Level);
+			pstmt.executeUpdate();
+			System.out.println("Modules assigned successfully.");
+		}
+		catch (SQLIntegrityConstraintViolationException iCV) {
+			System.out.println("Modules already assigned to this degree.");
+			SQLFunctions.closeAll(con, stmt, pstmt);
+		}
+		catch (SQLException ex) {
+			SQLFunctions.defaultError(ex, con, stmt, pstmt);
+		}
+		finally {
+			SQLFunctions.closeAll(con, stmt, pstmt);
+		}
+	}
+	
 }

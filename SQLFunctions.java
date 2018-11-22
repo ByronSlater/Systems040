@@ -34,8 +34,9 @@ public class SQLFunctions {
 		return false;
 	}
 
-	public static void defaultError(SQLException ex) {
+	public static void defaultError(SQLException ex, Connection con, Statement stmt, PreparedStatement pstmt) throws SQLException {
 		ex.printStackTrace();
+		closeAll(con, stmt, pstmt);
 	}
 	
 	public static void closeAll(Connection con, Statement stmt, PreparedStatement pstmt) throws SQLException {
