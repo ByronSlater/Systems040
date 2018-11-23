@@ -257,18 +257,17 @@ public class AdminFunctions {
 		}
 	}
 	
-	// Not yet tested functions below this point.
 	/**
 	 * Function employed to assign modules to their degree courses.
 	 */
-	public static void assignModuleDegree(String ModuleID, String DegreeLevel, String Core) throws SQLException {
+	public static void assignModuleDegree(String ModuleID, String DegreeLevel, int Core) throws SQLException {
 		try {
 			con = SQLFunctions.connectToDatabase();
 			pstmt = con.prepareStatement(
 					"INSERT INTO DegreeModule VALUES (?, ?, ?)");
 			pstmt.setString(1, ModuleID);
 			pstmt.setString(2, DegreeLevel);
-			pstmt.setString(3, Core);
+			pstmt.setInt(3, Core);
 			pstmt.executeUpdate();
 			System.out.println("Module assigned successfully.");
 		}
