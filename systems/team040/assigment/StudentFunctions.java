@@ -7,7 +7,7 @@
  * A class containing all the functions available to student accounts.
  */
 
-package systemsProject;
+package systems.team040.assigment;
 
 public class StudentFunctions {
 	

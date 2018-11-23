@@ -7,24 +7,23 @@
  * A class containing all the functions available to registrar accounts.
  */
 
-package systemsProject;
+package systems.team040.assigment;
 
 import java.sql.*;
 
 public class RegistrarFunctions {
-	// static class variables
-		private static Connection con = null;
-		private static Statement stmt = null;
-		private static PreparedStatement pstmt = null;
-
 	/**
 	 * Function employed to add student details.
-	 * @throws SQLException
 	 */
 	public static void addStudent(
-			String StudentID, String Title, String Forenames, String Surname, String EmailAddress, String Username) throws SQLException {			
+			String StudentID, String Title, String Forenames,
+			String Surname, String EmailAddress, String Username
+	) {
+	    Connection con = null;
+	    PreparedStatement pstmt = null;
+
 		try {
-			con = SQLFunctions.connectToDatabase();			
+			con = SQLFunctions.connectToDatabase();
 			pstmt = con.prepareStatement(
 					"INSERT INTO Student VALUES (?, ?, ?, ?, ?, ?)");
 			pstmt.setString(1, StudentID);
@@ -37,43 +36,48 @@ public class RegistrarFunctions {
 			System.out.println("Details added successfully.");
 		}
 		catch (SQLException ex) {
-			SQLFunctions.defaultError(ex, con, stmt, pstmt);
+		    ex.printStackTrace();
 		}
 		finally {
-			SQLFunctions.closeAll(con, stmt, pstmt);
+			SQLFunctions.closeAll(con, pstmt);
 		}
 	}
 	
 	/**
 	 * Function employed to remove student details.
-	 * @throws SQLException 
+     * TODO : needs to delete information from users table too
 	 */
-	public static void removeStudent(String StudentID) throws SQLException {
+	public static void removeStudent(String StudentID) {
+	    Connection con = null;
+	    PreparedStatement pstmt = null;
+
 		try {
+		    String query = "DELETE FROM STUDENT WHERE StudentId = ?;";
 			con = SQLFunctions.connectToDatabase();			
-			pstmt = con.prepareStatement(
-					"DELETE FROM Student WHERE StudentID = ?");
+			pstmt = con.prepareStatement(query);
 			pstmt.setString(1, StudentID);
 			pstmt.executeUpdate();
 			System.out.println("Removed successfully.");
 		}
 		catch (SQLException ex) {
-			SQLFunctions.defaultError(ex, con, stmt, pstmt);
+		    ex.printStackTrace();
 		}
 		finally {
-			SQLFunctions.closeAll(con, stmt, pstmt);
+			SQLFunctions.closeAll(con, pstmt);
 		}
 	}
 	
 	/**
 	 * Function employed to initially register students for study.
-	 * @throws SQLException
 	 */
-	public static void registerStudent(String PeriodID, String DegreeLevel, String StudentID, String StartDate) throws SQLException {
+	public static void registerStudent(String PeriodID, String DegreeLevel, String StudentID, String StartDate) {
+	    Connection con = null;
+	    PreparedStatement pstmt = null;
+
 		try {
+		    String query = "INSERT INTO StudentPeriod VALUES (?);";
 			con = SQLFunctions.connectToDatabase();			
-			pstmt = con.prepareStatement(
-					"INSERT INTO StudentPeriod VALUES (?)");
+			pstmt = con.prepareStatement(query);
 			pstmt.setString(1, PeriodID + StudentID);
 			pstmt.setString(2, PeriodID);
 			pstmt.setString(3, DegreeLevel);
@@ -83,10 +87,10 @@ public class RegistrarFunctions {
 			System.out.println("Removed successfully.");
 		}
 		catch (SQLException ex) {
-			SQLFunctions.defaultError(ex, con, stmt, pstmt);
+		    ex.printStackTrace();
 		}
 		finally {
-			SQLFunctions.closeAll(con, stmt, pstmt);
+			SQLFunctions.closeAll(con, pstmt);
 		}
 	}
 	
@@ -113,11 +117,12 @@ public class RegistrarFunctions {
 	
 	/**
 	 * Function employed to verify credit totals.
-	 * @throws SQLException 
 	 */
 	public static void verifyCreditTotal(String StudentID) throws SQLException {
 		int creditTotal = 0;
-		
+		Connection con = null;
+		PreparedStatement pstmt = null;
+
 		try {
 			con = SQLFunctions.connectToDatabase();			
 			pstmt = con.prepareStatement(
@@ -157,10 +162,10 @@ public class RegistrarFunctions {
 			}
 		}
 		catch (SQLException ex) {
-			SQLFunctions.defaultError(ex, con, stmt, pstmt);
+		    ex.printStackTrace();
 		}
 		finally {
-			SQLFunctions.closeAll(con, stmt, pstmt);
+			SQLFunctions.closeAll(con, pstmt);
 		}
 	}
 }

@@ -7,7 +7,7 @@
  * A class containing all the functions available to teacher accounts.
  */
 
-package systemsProject;
+package systems.team040.assigment;
 
 public class TeacherFunctions {
 
