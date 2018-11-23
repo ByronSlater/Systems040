@@ -1,6 +1,7 @@
 /*
  * SQLFunctions.java
  * @author Matt Prestwich
+ * @author Byron Slater
  */
 
 /**
@@ -9,43 +10,29 @@
 
 package systemsProject;
 
+import java.lang.AutoCloseable;
 import java.sql.*;
 
 public class SQLFunctions {
 	
 	public static Connection connectToDatabase() throws SQLException {
-		return DriverManager.getConnection("jdbc:mysql://stusql.dcs.shef.ac.uk/team040", "team040", "c7a84239");
+		return DriverManager.getConnection(
+				"jdbc:mysql://stusql.dcs.shef.ac.uk/team040",
+				"team040", "c7a84239"
+		);
 	}
 	
-	public static Boolean checkPrivilege(Connection con, int credID, int permission) throws SQLException {
-		PreparedStatement pstmt = con.prepareStatement("SELECT * FROM UserAccount WHERE id = ?");
-		pstmt.setInt(1, credID);
-		ResultSet cred = pstmt.executeQuery();
-
-		while (cred.next()) {
-			if (cred.getInt("accountType") == permission){
-				cred.close();
-				pstmt.close();
-				return true;
+	/**
+	 * Just tries to call close on a param list of closeables handed to it
+	 */
+	public static void closeAll(AutoCloseable... closeables) {
+	    for(AutoCloseable c : closeables) {
+	    	try {
+	    		if(c != null) c.close();
+	    	} catch (Exception e) {
+				System.out.println("Errored trying to close stuff, bad sign");
+	    		e.printStackTrace();
 			}
 		}
-		cred.close();
-		pstmt.close();
-		return false;
-	}
-
-	public static void defaultError(SQLException ex, Connection con, Statement stmt, PreparedStatement pstmt) throws SQLException {
-		ex.printStackTrace();
-		closeAll(con, stmt, pstmt);
-	}
-	
-	public static void closeAll(Connection con, Statement stmt, PreparedStatement pstmt) throws SQLException {
-		if (con != null)
-			con.close();
-		if (stmt != null)
-			stmt.close();
-		if (pstmt != null)
-			pstmt.close();
-	}
-	
+	}	
 }
