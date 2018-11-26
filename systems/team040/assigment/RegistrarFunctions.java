@@ -102,7 +102,7 @@ public class RegistrarFunctions {
 		try {
 			con = SQLFunctions.connectToDatabase();			
 			pstmt = con.prepareStatement(
-					"SELECT * FROM DegreeModule WHERE DegreeLevel = ? AND Core = N");
+					"SELECT * FROM DegreeLevel WHERE DegreeLevel = ? AND Core = N");
 			pstmt.setString(1, PeriodID + StudentID);
 			pstmt.executeUpdate();
 			System.out.println("Module added successfully.");
@@ -134,7 +134,7 @@ public class RegistrarFunctions {
 			student.close();
 
 			pstmt = con.prepareStatement(
-					"SELECT * FROM DegreeModule WHERE DegreeLevel = ? AND CORE = 1");
+					"SELECT * FROM DegreeLevel WHERE DegreeLevel = ? AND CORE = 1");
 			pstmt.setString(1, DegreeLevel);
 			ResultSet modules = pstmt.executeQuery();
 			

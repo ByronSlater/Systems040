@@ -12,10 +12,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Student {
-    private String studentId, forename, surname, email, username, title;
-
     private static final int REG_NO_CHARS = 8;
     private static final int PASSWORD_LENGTH = 12;
+
+    private String studentId, forename, surname, email, username, title;
+    private GraduateStatus graduateStatus;
 
     public Student(String studentId, String forename, String surname, String email, String username, int title) {
         this.studentId = studentId;
@@ -24,9 +25,46 @@ public class Student {
         this.email = email;
         this.username = username;
         this.title = new String[] { "Mr", "Ms" }[title];
+        this.graduateStatus = null;
     }
 
-    public static void main(String[] args) {
+    public static void inputNewStudent(String forename, String surname, String title) {}
+
+    /**
+     * returns -1 on error
+     */
+    public int getCreditsTakenTotal() {
+        String query = "" +
+                "SELECT SUM(Credits)" +
+                "  FROM Module" +
+                "       JOIN Grades" +
+                "         ON Module.ModuleID = Grades.ModuleID" +
+                "       JOIN StudentStudyPeriod" +
+                "         ON Grades.StudentPeriod = StudentStudyPeriod.StudentPeriod" +
+                "       JOIN Student" +
+                "         ON StudentStudyPeriod.StudentID = Student.StudentID" +
+                " WHERE Student.StudentID = ?;";
+
+        try(Connection con = SQLFunctions.connectToDatabase();
+            PreparedStatement pstmt = con.prepareStatement(query)) {
+
+            pstmt.setString(1, studentId);
+
+            try(ResultSet rs = pstmt.executeQuery()) {
+                if(rs.next()) {
+                    return rs.getInt(1);
+                } else {
+                    System.out.println("Couldn't find a grades total for student");
+                    return -1;
+                }
+            }
+
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return -1;
     }
 
     /**
@@ -68,6 +106,9 @@ public class Student {
         }
     }
 
+    /**
+     * Returns a randomly generated password with PASSWORD_LENGTH random alphabetic characters
+     */
     private static char[] generateRandomPassword() {
         char[] availChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".toCharArray();
         char[] password = new char[PASSWORD_LENGTH];
@@ -85,6 +126,7 @@ public class Student {
         String query = "UPDATE users SET password = / WHERE regNo = ?;";
         try(Connection con = SQLFunctions.connectToDatabase();
             PreparedStatement pstmt = con.prepareStatement(query)) {
+
             pstmt.setString(2, regNo);
 
             char[] password = generateRandomPassword();
