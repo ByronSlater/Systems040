@@ -24,7 +24,8 @@ public class Test extends JFrame implements ActionListener{
   public JPanel RegStudentsPanel = new JPanel(new FlowLayout());
   public JPanel IndividualStudentPanel = new JPanel();
   public JPanel TeacherStudentsPanel = new JPanel(new FlowLayout());
-  public JPanel StudentGradesPanel = new JPanel();
+  public JPanel ViewGradesPanel = new JPanel(new FlowLayout());
+  public JPanel EditGradesPanel = new JPanel();
   public JPanel AdminStudentPanel = new JPanel();
   public JTextField username = new JTextField("Username");
   public JPasswordField password = new JPasswordField("Password");
@@ -370,30 +371,38 @@ public class Test extends JFrame implements ActionListener{
 
     JTable student = new JTable(studentData, studentColumns);
     TeacherStudentsPanel.add(new JScrollPane(student));
-    JButton teacherStudent = new JButton("Edit Student Grades");
+    JButton teacherStudent = new JButton("View Student Grades");
     teacherStudent.addActionListener(this);
     TeacherStudentsPanel.add(teacherStudent);
 
-    StudentGradesPanel.setLayout(new BoxLayout(StudentGradesPanel, BoxLayout.Y_AXIS));
+    String[] gradesColumns = {"Module", "Grade", "Resit"};
+    Object[][] gradesData = {{"COM1003", "71", ""}, {"COM1004", "33", "44"}};
+    JTable grades = new JTable(gradesData, gradesColumns);
+    ViewGradesPanel.add(new JScrollPane(grades));
+    JButton viewGrades = new JButton("Edit Grades");
+    viewGrades.addActionListener(this);
+    ViewGradesPanel.add(viewGrades);
+
+    EditGradesPanel.setLayout(new BoxLayout(EditGradesPanel, BoxLayout.Y_AXIS));
     JTextField sExam = new JTextField("Exam: ");
     sExam.setEditable(false);
-    StudentGradesPanel.add(sExam);
+    EditGradesPanel.add(sExam);
     exam.addItem("COM1005 exam 1");
     exam.addItem("BUS1002 exam 1");
-    StudentGradesPanel.add(exam);
+    EditGradesPanel.add(exam);
     JTextField sGrade = new JTextField("Initial Grade: ");
     sGrade.setEditable(false);
-    StudentGradesPanel.add(sGrade);
+    EditGradesPanel.add(sGrade);
     grade.setPreferredSize(input);
-    StudentGradesPanel.add(grade);
+    EditGradesPanel.add(grade);
     JTextField sResit = new JTextField("Resit Grade: ");
     sResit.setEditable(false);
-    StudentGradesPanel.add(sResit);
+    EditGradesPanel.add(sResit);
     resit.setPreferredSize(input);
-    StudentGradesPanel.add(resit);
+    EditGradesPanel.add(resit);
     JButton updateGrades = new JButton("Update Grades");
     updateGrades.addActionListener(this);
-    StudentGradesPanel.add(updateGrades);
+    EditGradesPanel.add(updateGrades);
 
     setVisible(true);
   }
@@ -496,8 +505,11 @@ public class Test extends JFrame implements ActionListener{
     if(str.equals("All Students")){
       changePanel(TeacherStudentsPanel);
     }
-    if(str.equals("Edit Student Grades")){
-      changePanel(StudentGradesPanel);
+    if(str.equals("View Student Grades")){
+      changePanel(ViewGradesPanel);
+    }
+    if(str.equals("Edit Grades")){
+      changePanel(EditGradesPanel);
     }
     if(str.equals("Update Grades")){
       changePanel(TeacherStudentsPanel);
