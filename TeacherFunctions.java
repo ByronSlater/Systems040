@@ -79,16 +79,38 @@ public class TeacherFunctions {
 	}
 	
 	/**
+	 * Function employed to retrieve module credit values.
+	 * @throws SQLException 
+	 */
+	private static int getCreditValue(
+			Connection con, PreparedStatement pstmt, String ModuleID) throws SQLException{
+		ResultSet modules = null;
+		int creditValue = 0;
+		
+		pstmt = con.prepareStatement(
+				"SELECT * FROM Module WHERE ModuleID = ?");
+		pstmt.setString(1, ModuleID);
+		modules = pstmt.executeQuery();				
+		
+		while (modules.next()) {
+			creditValue = modules.getInt(3);
+		}
+		return creditValue;
+	}
+	
+	/**
 	 * Function employed to calculate students' weighted mean grades.
 	 * @throws SQLException
 	 */
 	public static double calculateWeightedMeanGrade(String StudentPeriod) throws SQLException {
 	    Connection con = null;
 	    PreparedStatement pstmt = null;
-	    ResultSet rs = null;
-	    int gradesSum = 0;
+	    ResultSet grades = null;
+	    double gradesSum = 0;
 	    int totalModules = 0;
 	    double weightedMean = 0;
+	    int creditValue = 0;
+	    int level = Integer.parseInt(StudentPeriod.substring(0,1));
 	    
 		try {
 			con = SQLFunctions.connectToDatabase();
@@ -96,27 +118,18 @@ public class TeacherFunctions {
 			pstmt = con.prepareStatement(
 					"SELECT * FROM Grades WHERE StudentPeriod = ?");
 			pstmt.setString(1, StudentPeriod);
-			rs = pstmt.executeQuery();
+			grades = pstmt.executeQuery();
 			
-			while (rs.next()) {
-				if ((Integer) rs.getInt(4) instanceof Integer) {
-					if ((int) rs.getString(1).charAt(3) >= 4) {
-						if (rs.getInt(4) > 50)
-							gradesSum += 50;
-						else
-							gradesSum += rs.getInt(4);
+			while (grades.next()) {
+				if (level >= 4) {
+					if (grades.getObject(4) instanceof Integer) {
+							creditValue = getCreditValue(con, pstmt, grades.getString(1));
+							gradesSum += (50 * (creditValue / 160));
 					}
-					else if (rs.getInt(4) > 40)
-						gradesSum += 40;
-					totalModules += 1;
-				} else if ((Integer) rs.getInt(3) instanceof Integer) {
-					gradesSum += rs.getInt(3);
-					totalModules += 1; 
 				}
 			}
-			rs.close();
-			weightedMean = gradesSum / totalModules;
-			System.out.println(weightedMean);
+			grades.close();
+			//weightedMean = 
 		}
 		catch (SQLException ex) {
 		    ex.printStackTrace();
@@ -127,12 +140,64 @@ public class TeacherFunctions {
 		return weightedMean;
 	}
 	
-	// WIP
 	/**
 	 * Function employed to calculate whether a student has passed their period of study.
 	 * @throws SQLException
-	 */
-	public static void calculateIfPassed(double weightedMean) throws SQLException {
+	 *
+	public static boolean calculateIfPassed(String StudentPeriod) throws SQLException {
+		Connection con = null;
+	    PreparedStatement pstmt = null;
+	    ResultSet student = null;
+	    ResultSet modules = null;
+	    Boolean allModulesPassed = false;
+	    Boolean weightedMeanPass = false;
+	    Boolean concededPass = false;
+	    String currentLevel = null;
+	    double weightedMean = 0;
+	    int level = 0;
 	    
-	}
+		try {
+			con = SQLFunctions.connectToDatabase();
+			
+			pstmt = con.prepareStatement(
+					"SELECT * FROM StudentPeriod WHERE StudentPeriod = ?");
+			pstmt.setString(1, StudentPeriod);
+			student = pstmt.executeQuery();
+			
+			// Retrieves student information.
+			while (student.next()) {
+				pstmt = con.prepareStatement(
+						"SELECT * FROM DegreeLevel WHERE DegreeCode = ?");
+				pstmt.setString(1, student.getString(3).substring(1));
+				currentLevel = student.getString(2).substring(0,1);
+				modules = pstmt.executeQuery();
+			}
+			student.close();
+			
+			while (modules.next()) {
+				if (modules.getString(1).substring(0, 1) == "P")
+					continue;
+				else
+					level += 1;
+			}
+			modules.close();
+			
+			pstmt = con.prepareStatement(
+					"SELECT * FROM GRADES WHERE StudentPeriod = ?");
+			pstmt.setString(1, StudentPeriod);
+			
+			weightedMean = calculateWeightedMeanGrade(StudentPeriod);
+			if (level == 3 && weightedMean >= 40)
+				weightedMeanPass = true;
+			else if (level == 4 && weightedMean >= 50)
+				weightedMeanPass = true;
+		}
+		finally {
+			SQLFunctions.closeAll(con, pstmt);
+		}
+		if ((allModulesPassed && weightedMeanPass) || concededPass)
+			return true;
+		else
+			return false;
+	}*/
 }
