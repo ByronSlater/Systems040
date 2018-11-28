@@ -51,13 +51,12 @@ public class Hasher {
         }
     }
 
-    public static boolean validatePassword(String entered, String stored) {
+    public static boolean validatePassword(char[] entered, String stored) {
         String[] parts = stored.split("\\$");
         byte[] salt = DatatypeConverter.parseHexBinary(parts[0]);
         byte[] hash = DatatypeConverter.parseHexBinary(parts[1]);
 
-        char[] enteredPassword = entered.toCharArray();
 
-        return Arrays.equals(hash(enteredPassword, salt), hash);
+        return Arrays.equals(hash(entered, salt), hash);
     }
 }

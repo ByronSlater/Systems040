@@ -15,23 +15,18 @@ public class AdminFunctions {
 	 * Function employed to create user accounts and set their privileges.
 	 * @throws SQLException
 	 */
-	public static void createAccount(String username, String password, int level) {
-	    Connection con = null;
-	    PreparedStatement pstmt = null;
-		ResultSet rs;
+	public static void createAccount(String username, char[] password, int level) {
+		String digest = Hasher.generateDigest(password);
+		String query = "INSERT INTO UserAccount VALUES (?, ?, ?);";
 
-		try {
-			con = SQLFunctions.connectToDatabase();
-			if (level < 4) {
-				pstmt = con.prepareStatement(
-						"INSERT INTO UserAccount VALUES (?, ?, ?)");
-				pstmt.setString(1, username);
-				pstmt.setString(2, password);
-				pstmt.setInt(3, level);
-				pstmt.executeUpdate();
-				System.out.println("Added successfully.");
-			} else
-				System.out.println("Invalid permission set.");
+		try(Connection con = SQLFunctions.connectToDatabase();
+		    PreparedStatement pstmt = con.prepareStatement(query)) {
+
+            pstmt.setString(1, username);
+            pstmt.setString(2, digest);
+            pstmt.setInt(3, level);
+            pstmt.executeUpdate();
+            System.out.println("Added successfully.");
 		}
 		catch (SQLIntegrityConstraintViolationException ex) {
 			System.out.println("User already exists.");
@@ -39,33 +34,26 @@ public class AdminFunctions {
 		catch (SQLException ex) {
 		    ex.printStackTrace();
 		}
-		finally {
-			SQLFunctions.closeAll(con, pstmt);
-		}
 	}
 	
 	/**
 	 * Function employed to update user passwords.
 	 * @
 	 */
-	public static void changePassword(String username, String newPass) {
-		Connection con = null;
-		PreparedStatement pstmt = null;
+	public static void changePassword(String username, char[] newPass) {
+	    String query = "UPDATE UserAccount SET password = ? WHERE username = ?;";
+	    String digest = Hasher.generateDigest(newPass);
 
-		try {
-			con = SQLFunctions.connectToDatabase();			
-			pstmt = con.prepareStatement(
-					"UPDATE UserAccount SET password = ? WHERE username = ?");
-			pstmt.setString(1, newPass);
+		try(Connection con = SQLFunctions.connectToDatabase();
+		    PreparedStatement pstmt = con.prepareStatement(query)) {
+
+			pstmt.setString(1, digest);
 			pstmt.setString(2, username);
 			pstmt.executeUpdate();
 			System.out.println("Updated successfully.");
 		}
 		catch (SQLException ex) {
 		    ex.printStackTrace();
-		}
-		finally {
-			SQLFunctions.closeAll(con, pstmt);
 		}
 	}
 	

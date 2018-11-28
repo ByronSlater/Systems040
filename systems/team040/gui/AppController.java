@@ -1,8 +1,15 @@
 package systems.team040.gui;
 
+import systems.team040.functions.Hasher;
+import systems.team040.functions.SQLFunctions;
+
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.function.Supplier;
 import javax.swing.*;
 
@@ -85,8 +92,39 @@ public class AppController {
             case "registrar":
                 changeView(createRegistrarSwitchboard());
                 break;
+            default:
+                tryProperLogin(username, password);
+
         }
     }
+
+    private void tryProperLogin(String username, char[] password) {
+        String query = "SELECT Password FROM UserAccount WHERE Username = ?;";
+
+        try(Connection con = SQLFunctions.connectToDatabase();
+            PreparedStatement pstmt = con.prepareStatement(query)) {
+
+            pstmt.setString(1, username);
+            try(ResultSet rs = pstmt.executeQuery()) {
+                // no password found, username invalid, do nothing
+                if(!rs.next()) {
+                    System.out.println("invalid usename");
+                    return;
+                }
+                String stored = rs.getString(1);
+
+                if(Hasher.validatePassword(password, stored)) {
+                    System.out.println("Real account entered");
+                } else {
+                    System.out.println("wrong password");
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
 
     void logout() {
         currentUser = null;
@@ -153,10 +191,10 @@ public class AppController {
 
     JPanel createRegistrarSwitchboard() {
         String[] buttonTitles = {
-                ""
+                "Nothin"
         };
         Supplier<JPanel>[] funcs = new Supplier[] {
-                this::createAdminSwitchboard, this::createRegistrarSwitchboard
+                this::createRegistrarSwitchboard
         };
 
         return createGenericSwitchboard(buttonTitles, funcs);
