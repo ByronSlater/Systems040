@@ -9,11 +9,16 @@ import java.awt.*;
 import java.sql.*;
 import java.util.Vector;
 
+/**
+ * Holds the general purpose functions/constants for the GUI
+ */
 public class GUI {
+    // screensize and default input/button sizes
     public static final Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
     public static final Dimension inputSize = new Dimension(100, 24);
     public static final Dimension buttonSize = new Dimension(100, 24);
 
+    // Converts a query and paramters to a JTable
     public static TableModel queryToTable(String query, String... parameters) {
         Vector<String> columnNames = new Vector<>();
         Vector<Vector<Object>> data = new Vector<>();
@@ -48,5 +53,4 @@ public class GUI {
 
         return new DefaultTableModel(data, columnNames);
     }
-
 }

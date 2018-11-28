@@ -12,12 +12,6 @@ public class AppController {
     private UserType currentUser;
 
     AppController() {
-        try {
-            Class.forName("com.mysql.jdbc.Driver");
-        } catch(Exception e) {
-            System.out.println("oh no");
-        }
-
         currentUser = null;
 
         frame = new JFrame();
@@ -33,7 +27,7 @@ public class AppController {
 
         frame.setVisible(true);
 
-        changeView(createAdminSwitchboard());
+        changeView(createLoginScreen());
     }
 
     void changeView(JPanel newPanel) {
@@ -78,12 +72,33 @@ public class AppController {
     }
 
     void tryLogin(String username, char[] password) {
-
+        switch(username.toLowerCase()) {
+            case "admin":
+                changeView(createAdminSwitchboard());
+                break;
+            case "student":
+                changeView(createStudentView(null));
+                break;
+            case "teacher":
+                changeView(createTeacherView());
+                break;
+            case "registrar":
+                changeView(createRegistrarSwitchboard());
+                break;
+        }
     }
 
     void logout() {
         currentUser = null;
-        changeView(new LoginView());
+        changeView(createLoginScreen());
+    }
+
+    JPanel createTeacherView() {
+        TeacherView view = new TeacherView();
+
+        view.getLogout().addActionListener(e -> logout());
+
+        return view;
     }
 
     JPanel createAdminSwitchboard() {
@@ -162,6 +177,12 @@ public class AppController {
         infoPanel.add(buttonsPanel, BorderLayout.PAGE_END);
 
         return infoPanel;
+    }
+
+    JPanel createStudentView(String regNo) {
+        StudentView view = new StudentView();
+        view.getLogout().addActionListener(e -> logout());
+        return view;
     }
 
     public static void main(String[] args) {

@@ -55,12 +55,31 @@ public class AddStudentView extends JPanel {
         panel.add(tutor, BorderLayout.CENTER);
         middlePanel.add(panel);
 
-        JCheckBox checkBox = new JCheckBox();
-        ArrayList<Object> degreeCodes = SQLFunctions.columnToList("DegreeCode", "Degreelevel");
-
 
         add(middlePanel, BorderLayout.CENTER);
+    }
 
+    public String getEnteredForename() {
+        return forename.getText();
+    }
 
+    public String getEnteredSurname() {
+        return surname.getText();
+    }
+
+    public String getEnteredTitle() {
+        return title.getText();
+    }
+
+    public String getEnteredTutor() {
+        return tutor.getText();
+    }
+
+    public JButton getAddStudentButton() {
+        return addStudentButton;
+    }
+
+    public JButton getBackButton() {
+        return backButton;
     }
 }
