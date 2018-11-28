@@ -42,18 +42,18 @@ public class RegistrarFunctions {
 			ResultSet students = pstmt.executeQuery();
 			Username = Forenames.charAt(0) + Surname + 1; 
 			if (students != null) {
-				students.next();
-				if (students.getString(1).charAt(0) == Forenames.charAt(0)) {
-					pstmt = con.prepareStatement(
-							"SELECT MAX(UserAccount.Username) FROM UserAccount JOIN Student ON UserAccount.Username = Student.Username WHERE Student.Forename = ? AND Student.Surname = ?");
-					pstmt.setString(1, students.getString(1));
-					pstmt.setString(2, students.getString(2));
-					ResultSet nameFormat = pstmt.executeQuery();
-					nameFormat.next();
-					int value = 1+Character.getNumericValue(nameFormat.getString(1).charAt(nameFormat.getString(1).length()-1));
-					System.out.println(nameFormat.getString(1)+ " " + value);
-					Username = Forenames.charAt(0) + Surname + value;
-					
+				while (students.next()) {
+					if (students.getString(1).charAt(0) == Forenames.charAt(0)) {
+						pstmt = con.prepareStatement(
+								"SELECT MAX(UserAccount.Username) FROM UserAccount JOIN Student ON UserAccount.Username = Student.Username WHERE Student.Forename = ? AND Student.Surname = ?");
+						pstmt.setString(1, students.getString(1));
+						pstmt.setString(2, students.getString(2));
+						ResultSet nameFormat = pstmt.executeQuery();
+						nameFormat.next();
+						int value = 1+Character.getNumericValue(nameFormat.getString(1).charAt(nameFormat.getString(1).length()-1));
+						Username = Forenames.charAt(0) + Surname + value;
+						break;
+					}
 				}	
 			}
 			students.close();
