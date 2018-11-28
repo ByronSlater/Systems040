@@ -83,11 +83,11 @@ public class TeacherFunctions {
 	 * @throws SQLException 
 	 */
 	private static int getCreditValue(
-			Connection con, PreparedStatement pstmt, String ModuleID) throws SQLException{
+			Connection con, String ModuleID) throws SQLException{
 		ResultSet modules = null;
 		int creditValue = 0;
 		
-		pstmt = con.prepareStatement(
+		PreparedStatement pstmt = con.prepareStatement(
 				"SELECT * FROM Module WHERE ModuleID = ?");
 		pstmt.setString(1, ModuleID);
 		modules = pstmt.executeQuery();				
@@ -95,7 +95,30 @@ public class TeacherFunctions {
 		while (modules.next()) {
 			creditValue = modules.getInt(3);
 		}
+		modules.close();
+		pstmt.close();
 		return creditValue;
+	}
+	
+	/**
+	 * Function employed to retrieve the current degree level.
+	 * @throws SQLException 
+	 */
+	private static int getDegreeLevel(
+			Connection con, String StudentPeriod) throws SQLException {
+		PreparedStatement pstmt = con.prepareStatement(
+	    		"SELECT * FROM StudentPeriod WHERE StudentPeriod = ?");
+	    pstmt.setString(1, StudentPeriod);
+	    ResultSet rs = pstmt.executeQuery();
+	    pstmt = con.prepareStatement(
+	    		"SELECT * FROM DegreeLevel WHERE DegreeLevel = ?");
+	    pstmt.setString(1, rs.getString(3));
+	    ResultSet rs1 = pstmt.executeQuery();
+	    int level = Integer.parseInt(rs1.getString(3));
+	    rs.close();
+	    rs1.close();
+	    pstmt.close();
+	    return level;
 	}
 	
 	/**
@@ -106,14 +129,14 @@ public class TeacherFunctions {
 	    Connection con = null;
 	    PreparedStatement pstmt = null;
 	    ResultSet grades = null;
-	    double gradesSum = 0;
-	    int totalModules = 0;
+	    int gradesSum = 0;
 	    double weightedMean = 0;
-	    int creditValue = 0;
-	    int level = Integer.parseInt(StudentPeriod.substring(0,1));
+	    int level = 0;
 	    
 		try {
 			con = SQLFunctions.connectToDatabase();
+			
+			level = getDegreeLevel(con, StudentPeriod);
 			
 			pstmt = con.prepareStatement(
 					"SELECT * FROM Grades WHERE StudentPeriod = ?");
@@ -121,15 +144,29 @@ public class TeacherFunctions {
 			grades = pstmt.executeQuery();
 			
 			while (grades.next()) {
-				if (level >= 4) {
-					if (grades.getObject(4) instanceof Integer) {
-							creditValue = getCreditValue(con, pstmt, grades.getString(1));
-							gradesSum += (50 * (creditValue / 160));
+				int creditValue = getCreditValue(con, grades.getString(1));;
+				if (grades.getObject(4) instanceof Integer) {
+					if (level >= 4) {
+						if (grades.getInt(4) >= 50)
+							gradesSum += (50 * creditValue);
+						else
+							gradesSum += (grades.getInt(4) * creditValue);
+					} else {
+						if (grades.getInt(4) >= 40)
+							gradesSum += (40 * creditValue);
+						else
+							gradesSum += (grades.getInt(4) * creditValue);
 					}
+				} else {
+					gradesSum += (grades.getInt(3) * creditValue); 
 				}
 			}
 			grades.close();
-			//weightedMean = 
+			
+			if (level >= 4)
+				weightedMean = gradesSum / 18000;
+			else
+				weightedMean = gradesSum / 12000;
 		}
 		catch (SQLException ex) {
 		    ex.printStackTrace();
@@ -143,61 +180,65 @@ public class TeacherFunctions {
 	/**
 	 * Function employed to calculate whether a student has passed their period of study.
 	 * @throws SQLException
-	 *
+	 */
 	public static boolean calculateIfPassed(String StudentPeriod) throws SQLException {
 		Connection con = null;
 	    PreparedStatement pstmt = null;
-	    ResultSet student = null;
-	    ResultSet modules = null;
-	    Boolean allModulesPassed = false;
+	    Boolean allModulesPassed = true;
 	    Boolean weightedMeanPass = false;
 	    Boolean concededPass = false;
-	    String currentLevel = null;
 	    double weightedMean = 0;
-	    int level = 0;
 	    
 		try {
 			con = SQLFunctions.connectToDatabase();
 			
+			int level = getDegreeLevel(con, StudentPeriod);
+			
 			pstmt = con.prepareStatement(
 					"SELECT * FROM StudentPeriod WHERE StudentPeriod = ?");
 			pstmt.setString(1, StudentPeriod);
-			student = pstmt.executeQuery();
+			ResultSet student = pstmt.executeQuery();
+			pstmt.close();
 			
-			// Retrieves student information.
-			while (student.next()) {
-				pstmt = con.prepareStatement(
-						"SELECT * FROM DegreeLevel WHERE DegreeCode = ?");
-				pstmt.setString(1, student.getString(3).substring(1));
-				currentLevel = student.getString(2).substring(0,1);
-				modules = pstmt.executeQuery();
-			}
+			pstmt = con.prepareStatement(
+					"SELECT * FROM Grades WHERE StudentPeriod = ?");
+			pstmt.setString(1, student.getString(1));
+			ResultSet modules = pstmt.executeQuery();
 			student.close();
 			
+			int creditsFailed = 0;
 			while (modules.next()) {
-				if (modules.getString(1).substring(0, 1) == "P")
-					continue;
-				else
-					level += 1;
+				if (level >= 4) {
+					if (modules.getInt(3) < (0.9 * 50))
+						allModulesPassed = false;
+					else if (modules.getInt(3) < 50)
+						creditsFailed += getCreditValue(con, modules.getString(1));
+				} else {
+					if (modules.getInt(3) < (0.9 * 40))
+						allModulesPassed = false;
+					else if (modules.getInt(3) < 40)
+						creditsFailed += getCreditValue(con, modules.getString(1));
+				}
 			}
 			modules.close();
 			
-			pstmt = con.prepareStatement(
-					"SELECT * FROM GRADES WHERE StudentPeriod = ?");
-			pstmt.setString(1, StudentPeriod);
+			if (level >= 4 && creditsFailed <= 15)
+				concededPass = true;
+			else if (creditsFailed <= 20)
+				concededPass = true;
 			
 			weightedMean = calculateWeightedMeanGrade(StudentPeriod);
-			if (level == 3 && weightedMean >= 40)
+			if (level <= 3 && weightedMean >= 40)
 				weightedMeanPass = true;
-			else if (level == 4 && weightedMean >= 50)
+			else if (level >= 4 && weightedMean >= 50)
 				weightedMeanPass = true;
 		}
 		finally {
 			SQLFunctions.closeAll(con, pstmt);
 		}
-		if ((allModulesPassed && weightedMeanPass) || concededPass)
+		if ((allModulesPassed && weightedMeanPass) || (weightedMeanPass && concededPass))
 			return true;
 		else
 			return false;
-	}*/
+	}
 }
