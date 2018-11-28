@@ -18,6 +18,7 @@ import java.util.ArrayList;
 public class RegistrarFunctions {
 	/**
 	 * Function employed to add student a student to the Student table with given details. Also takes a degree and add registers them for that degree.
+	 * Will generate a unique Userid and Username.
 	 */
 	public static void addStudent(
 			String Title, String Forenames,
@@ -29,13 +30,13 @@ public class RegistrarFunctions {
 	    String StudentID = null;
 		try {
 			con = SQLFunctions.connectToDatabase();
-			
+			//Generation of a unique StudentID which is one higher than the previous maximum
 			pstmt = con.prepareStatement(
 					"SELECT MAX(StudentID) FROM Student");
 			ResultSet maxID = pstmt.executeQuery();
 			maxID.next();
 			StudentID = Integer.toString((Integer.parseInt(maxID.getString(1)) + 1));
-			
+			//Generation of a unique Username by checking for usernames of the same form and incrementing the end value by 1 in duplicate cases.
 			pstmt = con.prepareStatement(
 					"SELECT Forename,Surname FROM Student WHERE Surname = ?");
 			pstmt.setString(1, Surname);
@@ -57,8 +58,9 @@ public class RegistrarFunctions {
 				}	
 			}
 			students.close();
-			
+			//Creates the account in the account database with a random password
 			AdminFunctions.createAccount(Username, Student.generateRandomPassword(), 3);
+			//Adds the student into the student database
 			pstmt = con.prepareStatement(
 					"INSERT INTO Student VALUES (?, ?, ?, ?, ?, ?, ?)");
 			pstmt.setString(1, StudentID);
@@ -69,25 +71,15 @@ public class RegistrarFunctions {
 			pstmt.setString(6, Tutor);
 			pstmt.setString(7, Username);
 			pstmt.executeUpdate();
-			
-			pstmt = con.prepareStatement(
-					"INSERT INTO StudentPeriod VALUES (?,'A',?,?,?)");
-			pstmt.setString(1, ("A" + StudentID));
-			pstmt.setString(2, ("1" + Degree));
-			pstmt.setString(3, StudentID);
-			pstmt.setString(4, StartDate);
-			pstmt.executeUpdate();
-			
+			//Gives the student a starting student study period with value A
+			registerStudent(("A" + StudentID), ("1" + Degree), StudentID, StartDate);
+			//Assigns the user to all the core modules for their degree
 			pstmt = con.prepareStatement(
 					"SELECT * FROM DegreeModule WHERE DegreeLevel = ? AND isCore = 1");
 			pstmt.setString(1, ("1" + Degree));
 			ResultSet modules = pstmt.executeQuery();
 			while (modules.next()) {
-				pstmt = con.prepareStatement(
-						"INSERT INTO Grades VALUES (?,?,NULL,NULL)");
-				pstmt.setString(1, ("A" + StudentID));
-				pstmt.setString(2, modules.getString(1));
-				pstmt.executeUpdate();
+				addModule(modules.getString(1),("A"+StudentID));
 			}
 			modules.close();
 		}
@@ -113,7 +105,6 @@ public class RegistrarFunctions {
 			pstmt = con.prepareStatement(query);
 			pstmt.setString(1, Username);
 			pstmt.executeUpdate();
-			System.out.println("Removed successfully.");
 		}
 		catch (SQLException ex) {
 		    ex.printStackTrace();
@@ -124,7 +115,7 @@ public class RegistrarFunctions {
 	}
 	
 	/**
-	 * Function employed to initially register students for study.
+	 * Function employed to register a student for a study period.
 	 */
 	public static void registerStudent(String PeriodID, String DegreeLevel, String StudentID, String StartDate) {
 	    Connection con = null;
@@ -140,7 +131,6 @@ public class RegistrarFunctions {
 			pstmt.setString(4, StudentID);
 			pstmt.setString(5, StartDate);
 			pstmt.executeUpdate();
-			System.out.println("Removed successfully.");
 		}
 		catch (SQLException ex) {
 		    ex.printStackTrace();
@@ -150,7 +140,26 @@ public class RegistrarFunctions {
 		}
 	}
 	
-
+	
+	
+    public static void addModule(String Module, String StudentPeriod){
+    	Connection con = null;
+		PreparedStatement pstmt = null;
+    	try {
+    		con = SQLFunctions.connectToDatabase();	
+    		pstmt = con.prepareStatement(
+    				"INSERT INTO Grades VALUES (?,?,null,null)");
+    		pstmt.setString(1, Module);
+    		pstmt.setString(2, StudentPeriod);
+    		pstmt.executeUpdate();
+    	}
+		catch (SQLException ex) {
+		    ex.printStackTrace();
+		}
+		finally {
+			SQLFunctions.closeAll(con, pstmt);
+		}
+    }
 	/**
 	 * Function employed to list optional modules for a student. An empty list indicates full credits.
 	 * @throws SQLException
