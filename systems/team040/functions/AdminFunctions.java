@@ -6,9 +6,7 @@
 /**
  * A class containing all the functions available to admin accounts.
  */
-package systems.team040.assigment;
-
-import sun.security.krb5.internal.EncAPRepPart;
+package systems.team040.functions;
 
 import java.sql.*;
 

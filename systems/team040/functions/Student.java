@@ -1,4 +1,4 @@
-package systems.team040.assigment;
+package systems.team040.functions;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -107,7 +107,8 @@ public class Student {
     }
 
     /**
-     * Returns a randomly generated password with PASSWORD_LENGTH random alphabetic characters
+     * Returns a randomly generated password with PASSWORD_LENGTH random alphabetic characters and one random
+     * number interspersed
      */
     private static char[] generateRandomPassword() {
         char[] availChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".toCharArray();
@@ -123,7 +124,7 @@ public class Student {
     }
 
     public static char[] generatePasswordForUser(String regNo) {
-        String query = "UPDATE users SET password = / WHERE regNo = ?;";
+        String query = "UPDATE users SET password = ? WHERE regNo = ?;";
         try(Connection con = SQLFunctions.connectToDatabase();
             PreparedStatement pstmt = con.prepareStatement(query)) {
 

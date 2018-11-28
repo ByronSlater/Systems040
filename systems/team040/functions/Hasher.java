@@ -1,18 +1,12 @@
-package systems.team040.assigment;
-
-import com.sun.prism.PixelFormat;
+package systems.team040.functions;
 
 import javax.crypto.SecretKeyFactory;
-import javax.crypto.interfaces.PBEKey;
 import javax.crypto.spec.PBEKeySpec;
 import javax.xml.bind.DatatypeConverter;
-import javax.xml.crypto.Data;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
-import java.sql.DataTruncation;
 import java.util.Arrays;
-import java.util.Base64;
 
 
 public class Hasher {
