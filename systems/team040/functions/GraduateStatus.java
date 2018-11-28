@@ -1,4 +1,4 @@
-package systems.team040.assigment;
+package systems.team040.functions;
 
 enum GraduateStatus {
     Undergraduate(120),
