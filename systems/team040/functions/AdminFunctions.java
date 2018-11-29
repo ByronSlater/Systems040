@@ -1,6 +1,7 @@
 /*
  * AdminFunctions.java
  * @author Matt Prestwich
+ * @author James Taylor
  */
 
 /**
@@ -26,10 +27,6 @@ public class AdminFunctions {
             pstmt.setString(2, digest);
             pstmt.setInt(3, level);
             pstmt.executeUpdate();
-            System.out.println("Added successfully.");
-		}
-		catch (SQLIntegrityConstraintViolationException ex) {
-			System.out.println("User already exists.");
 		}
 		catch (SQLException ex) {
 		    ex.printStackTrace();
@@ -50,7 +47,6 @@ public class AdminFunctions {
 			pstmt.setString(1, digest);
 			pstmt.setString(2, username);
 			pstmt.executeUpdate();
-			System.out.println("Updated successfully.");
 		}
 		catch (SQLException ex) {
 		    ex.printStackTrace();
@@ -72,9 +68,7 @@ public class AdminFunctions {
 						"DELETE FROM UserAccount WHERE username = ?");
 				pstmt.setString(1, username);
 				pstmt.executeUpdate();
-				System.out.println("Removed successfully.");
-			} else
-				System.out.println("Cannot remove own account.");
+			}
 		}
 		catch (SQLException ex) {
 		    ex.printStackTrace();
@@ -100,9 +94,6 @@ public class AdminFunctions {
 			pstmt.executeUpdate();
 			System.out.println("Department added successfully.");
 		}
-		catch (SQLIntegrityConstraintViolationException iCV) {
-			System.out.println("Department already exists.");
-		}
 		catch (SQLException ex) {
 		    ex.printStackTrace();
 		}
@@ -124,7 +115,6 @@ public class AdminFunctions {
 					"DELETE FROM Department WHERE Dept = ?");
 			pstmt.setString(1, deptCode);
 			pstmt.executeUpdate();
-			System.out.println("Department removed successfully.");
 		}
 		catch (SQLException ex) {
 		    ex.printStackTrace();
@@ -137,7 +127,7 @@ public class AdminFunctions {
 	/**
 	 * Function employed to add degree courses.
 	 */
-	public static void addDegree(String degreeCode, String degreeName) {
+	public static void addDegree(String degreeCode, String degreeName, int degreeLength) {
 	    Connection con = null;
 		PreparedStatement pstmt = null;
 
@@ -147,11 +137,15 @@ public class AdminFunctions {
 					"INSERT INTO Degree VALUES (?, ?)");
 			pstmt.setString(1, degreeCode);
 			pstmt.setString(2, degreeName);
-			pstmt.executeUpdate();
-			System.out.println("Degree course added successfully.");
-		}
-		catch (SQLIntegrityConstraintViolationException ex) {
-			System.out.println("Degree course already exists.");
+			pstmt.executeUpdate();	
+			
+			
+			for(int i=1; i<=degreeLength; i++){
+				assignDegreeLevels(Integer.toString(i) + degreeCode, degreeCode, Integer.toString(i));
+			}
+			if (degreeCode.length() == 7) {
+				assignDegreeLevels("Y" + degreeCode, degreeCode, "Y");
+			}
 		}
 		catch (SQLException ex) {
 		    ex.printStackTrace();
@@ -174,7 +168,6 @@ public class AdminFunctions {
 			pstmt = con.prepareStatement(query);
 			pstmt.setString(1, degreeCode);
 			pstmt.executeUpdate();
-			System.out.println("Degree course removed successfully.");
 		}
 		catch (SQLException ex) {
 		    ex.printStackTrace();
@@ -199,10 +192,6 @@ public class AdminFunctions {
 			pstmt.setString(2, Dept);
 			pstmt.setInt(3, isPrimary);
 			pstmt.executeUpdate();
-			System.out.println("Department assigned successfully.");
-		}
-		catch (SQLIntegrityConstraintViolationException ex) {
-			System.out.println("Degree already assigned to this department.");
 		}
 		catch (SQLException ex) {
 		    ex.printStackTrace();
@@ -230,10 +219,6 @@ public class AdminFunctions {
 			pstmt.setString(5, ModuleTitle);
 			pstmt.executeUpdate();
 			System.out.println("Module added successfully.");
-		}
-		catch (SQLIntegrityConstraintViolationException iCV) {
-			System.out.println("Module already exists.");
-			SQLFunctions.closeAll(con, pstmt);
 		}
 		catch (SQLException ex) {
 		    ex.printStackTrace();
@@ -281,10 +266,6 @@ public class AdminFunctions {
 			pstmt.setString(2, DegreeLevel);
 			pstmt.setInt(3, Core);
 			pstmt.executeUpdate();
-			System.out.println("Module assigned successfully.");
-		}
-		catch (SQLIntegrityConstraintViolationException iCV) {
-			System.out.println("Module already assigned to this degree.");
 		}
 		catch (SQLException ex) {
 		    ex.printStackTrace();
@@ -297,7 +278,7 @@ public class AdminFunctions {
 	/**
 	 * Function employed to assign degree courses their modules. 
 	 */
-	public static void assignDegreeModules(String DegreeLevel, String DegreeCode, String Level) {
+	public static void assignDegreeLevels(String DegreeLevel, String DegreeCode, String Level) {
 	    Connection con = null;
 	    PreparedStatement pstmt = null;
 
@@ -310,10 +291,6 @@ public class AdminFunctions {
 			pstmt.setString(2, DegreeCode);
 			pstmt.setString(3, Level);
 			pstmt.executeUpdate();
-			System.out.println("Modules assigned successfully.");
-		}
-		catch (SQLIntegrityConstraintViolationException iCV) {
-			System.out.println("Modules already assigned to this degree.");
 		}
 		catch (SQLException ex) {
 		    ex.printStackTrace();
