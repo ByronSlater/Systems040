@@ -102,23 +102,6 @@ public class TeacherFunctions {
 	}
 	
 	/**
-	 * Function employed to retrieve the current degree level of a study period.
-	 * @throws SQLException 
-	 */
-	public static int getDegreeLevel(
-			Connection con, String StudentPeriod) throws SQLException {
-		PreparedStatement pstmt = con.prepareStatement(
-	    		"SELECT DegreeLevel.Level FROM DegreeLevel JOIN StudentPeriod ON DegreeLevel.DegreeLevel = StudentPeriod.DegreeLevel WHERE StudentPeriod = ?");
-	    pstmt.setString(1, StudentPeriod);
-	    ResultSet rs = pstmt.executeQuery();
-	    rs.next();
-	    int level = rs.getInt(1);
-	    rs.close();
-	    pstmt.close();
-	    return level;
-	}
-	
-	/**
 	 * Function employed to calculate students' weighted mean grades.
 	 * @throws SQLException
 	 */
@@ -126,14 +109,20 @@ public class TeacherFunctions {
 	    Connection con = null;
 	    PreparedStatement pstmt = null;
 	    ResultSet grades = null;
-	    int gradesSum = 0;
+	    double gradesSum = 0;
 	    double weightedMean = 0;
-	    int level = 0;
 	    
 		try {
 			con = SQLFunctions.connectToDatabase();
 			
-			level = getDegreeLevel(con, StudentPeriod);
+			pstmt = con.prepareStatement(
+		    		"SELECT DegreeLevel.Level,DegreeCode FROM DegreeLevel JOIN StudentPeriod ON DegreeLevel.DegreeLevel = StudentPeriod.DegreeLevel WHERE StudentPeriod = ?");
+		    pstmt.setString(1, StudentPeriod);
+		    ResultSet rs = pstmt.executeQuery();
+		    rs.next();
+		    int level = rs.getInt(1);
+		    String Degree = rs.getString(2);
+		    rs.close();
 			
 			pstmt = con.prepareStatement(
 					"SELECT * FROM Grades WHERE StudentPeriod = ?");
@@ -141,9 +130,9 @@ public class TeacherFunctions {
 			grades = pstmt.executeQuery();
 			
 			while (grades.next()) {
-				int creditValue = getCreditValue(con, grades.getString(1));;
+				int creditValue = getCreditValue(con, grades.getString(2));
 				if (grades.getObject(4) instanceof Integer) {
-					if (level >= 4) {
+					if ((level >= 4) || (Degree.charAt(3) == 'P')) {
 						if (grades.getInt(4) >= 50)
 							gradesSum += (50 * creditValue);
 						else
@@ -189,7 +178,13 @@ public class TeacherFunctions {
 		try {
 			con = SQLFunctions.connectToDatabase();
 			
-			int level = getDegreeLevel(con, StudentPeriod);
+			pstmt = con.prepareStatement(
+		    		"SELECT DegreeLevel.LevelFROM DegreeLevel JOIN StudentPeriod ON DegreeLevel.DegreeLevel = StudentPeriod.DegreeLevel WHERE StudentPeriod = ?");
+		    pstmt.setString(1, StudentPeriod);
+		    ResultSet rs = pstmt.executeQuery();
+		    rs.next();
+		    int level = rs.getInt(1);
+		    rs.close();
 			
 			pstmt = con.prepareStatement(
 					"SELECT * FROM StudentPeriod WHERE StudentPeriod = ?");
