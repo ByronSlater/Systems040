@@ -13,7 +13,7 @@ import java.sql.*;
 
 public class AdminFunctions {
 	/**
-	 * Function employed to create user accounts and set their privileges.
+	 * Function employed to create user accounts and set their privileges. Updates the user account database with a new user/password/account type.
 	 * @throws SQLException
 	 */
 	public static void createAccount(String username, char[] password, int level) {
@@ -34,16 +34,15 @@ public class AdminFunctions {
 	}
 	
 	/**
-	 * Function employed to update user passwords.
+	 * Function employed to update user passwords. Finds a user ID and changes the
 	 * @
 	 */
 	public static void changePassword(String username, char[] newPass) {
-	    String query = "UPDATE UserAccount SET password = ? WHERE username = ?;";
 	    String digest = Hasher.generateDigest(newPass);
-
-		try(Connection con = SQLFunctions.connectToDatabase();
-		    PreparedStatement pstmt = con.prepareStatement(query)) {
-
+		try {
+			Connection con = SQLFunctions.connectToDatabase();
+		    PreparedStatement pstmt = con.prepareStatement(
+		    		"UPDATE UserAccount SET password = ? WHERE username = ?;"); 
 			pstmt.setString(1, digest);
 			pstmt.setString(2, username);
 			pstmt.executeUpdate();
@@ -217,7 +216,6 @@ public class AdminFunctions {
 			pstmt.setString(4, TimePeriod); //Time period is the CHAR A/S/U/Y (Autumn,Spring,Summer,Year)
 			pstmt.setString(5, ModuleTitle);
 			pstmt.executeUpdate();
-			System.out.println("Module added successfully.");
 		}
 		catch (SQLException ex) {
 		    ex.printStackTrace();
@@ -228,9 +226,9 @@ public class AdminFunctions {
 	}	
 	
 	/**
-	 * Function employed to remove modules.
+	 * Function employed to fully delete modules and all data attached such as student grades.
 	 */
-	public static void removeModule(String ModuleID) {
+	public static void fullDeleteModule(String ModuleID) {
 	    Connection con = null;
 	    PreparedStatement pstmt = null;
 
@@ -240,7 +238,29 @@ public class AdminFunctions {
 					"DELETE FROM Module WHERE ModuleID = ?");
 			pstmt.setString(1, ModuleID);
 			pstmt.executeUpdate();
-			System.out.println("Module removed successfully.");
+		}
+		catch (SQLException ex) {
+		    ex.printStackTrace();
+		}
+		finally {
+			SQLFunctions.closeAll(con, pstmt);
+		}
+	}
+	
+	
+	/**
+	 * Function employed to soft delete a module by removing all current links to degrees so the module cannot be added to any future students.
+	 */
+	public static void removeModule(String ModuleID) {
+	    Connection con = null;
+	    PreparedStatement pstmt = null;
+
+		try {
+			con = SQLFunctions.connectToDatabase();
+			pstmt = con.prepareStatement(
+					"DELETE FROM DegreeModule WHERE ModuleID = ?");
+			pstmt.setString(1, ModuleID);
+			pstmt.executeUpdate();
 		}
 		catch (SQLException ex) {
 		    ex.printStackTrace();
