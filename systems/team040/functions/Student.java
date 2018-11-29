@@ -1,5 +1,8 @@
 package systems.team040.functions;
 
+import com.mysql.cj.protocol.Resultset;
+
+import javax.xml.transform.Result;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -204,12 +207,51 @@ public class Student {
      * after emails start either at 1 or after the very highest number recorded to
      * a given name-surname combination on the current database to ensure no collisions
      */
+    private static String generateEmail(String username) {
+
+        int maxInt = 1;
+        String query = "SELECT EmailAddress from Student WHERE EmailAddress LIKE ? || ?;";
+        Pattern pattern = Pattern.compile("(?<text>.+?)(?<number>\\d+)@Sheffield.ac.uk", Pattern.CASE_INSENSITIVE);
+
+        try(Connection con = SQLFunctions.connectToDatabase();
+            PreparedStatement pstmt = con.prepareStatement(query)) {
+
+            pstmt.setString(1, username);
+            try(ResultSet rs = pstmt.executeQuery()) {
+
+                while (rs.next()) {
+                    String email = rs.getString("EmailAddress");
+                    Matcher match = pattern.matcher(email);
+
+                    // regex not matched, skip
+                    if(!match.find()) {
+                        continue;
+                    }
+
+                    // username doesn't match, skip
+                    if(!match.group("text").equals(username)) {
+                        continue;
+                    }
+
+                    int intPart = Integer.parseInt(match.group("number"));
+                    if((intPart + 1) > maxInt) {
+                        maxInt = intPart + 1;
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return username + maxInt;
+    }
+
     private static void giveStudentsEmails(ArrayList<Student> students) {
         // get a map to show us what number has already been taken up to
         // for each possible email
         ArrayList<String> emails = getEmails();
         Collections.sort(emails);
-        Pattern pattern = Pattern.compile("(?<text>.+?)(?<number>\\d+)");
+        Pattern pattern = Pattern.compile("(?<text>.+?)(?<number>\\d+)@Sheffield.ac.uk");
         HashMap<String, Integer> emailToNumber = new HashMap<>();
 
         for (String email : emails) {
