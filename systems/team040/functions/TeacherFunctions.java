@@ -1,4 +1,4 @@
-/**
+/*
  * TeacherFunctions.java
  * @author Matt Prestwich
  * @author Byron Slater
@@ -9,7 +9,7 @@
  * A class containing all the functions available to teacher accounts.
  */
 
-package systems.team040.functions;
+package systemsProject;
 
 import java.sql.*;
 
@@ -26,7 +26,7 @@ public class TeacherFunctions {
 			con = SQLFunctions.connectToDatabase();
 			
 			pstmt = con.prepareStatement(
-					"INSERT INTO Grades VALUES (?, ?, ?, null)");
+					"INSERT INTO Grades VALUES (?, ?, ?, 0)");
 			pstmt.setString(1, StudentPeriod);
 			pstmt.setString(2, ModuleID);
 			pstmt.setInt(3, Grade);
@@ -123,6 +123,7 @@ public class TeacherFunctions {
 		    int level = rs.getInt(1);
 		    String Degree = rs.getString(2);
 		    rs.close();
+		    pstmt.close();
 			
 			pstmt = con.prepareStatement(
 					"SELECT * FROM Grades WHERE StudentPeriod = ?");
@@ -132,7 +133,7 @@ public class TeacherFunctions {
 			while (grades.next()) {
 				int creditValue = getCreditValue(con, grades.getString(2));
 				if (grades.getObject(4) instanceof Integer) {
-					if ((level >= 4) || (Degree.charAt(3) == 'P')) {
+					if ((level == 4) || (Degree.charAt(3) == 'P')) {
 						if (grades.getInt(4) >= 50)
 							gradesSum += (50 * creditValue);
 						else
@@ -149,7 +150,7 @@ public class TeacherFunctions {
 			}
 			grades.close();
 			
-			if (level >= 4)
+			if (level == 4)
 				weightedMean = gradesSum / 18000;
 			else
 				weightedMean = gradesSum / 12000;
@@ -185,11 +186,13 @@ public class TeacherFunctions {
 		    rs.next();
 		    int level = rs.getInt(1);
 		    rs.close();
+		    pstmt.close();
 			
 			pstmt = con.prepareStatement(
 					"SELECT * FROM StudentPeriod WHERE StudentPeriod = ?");
 			pstmt.setString(1, StudentPeriod);
 			ResultSet student = pstmt.executeQuery();
+			student.next();
 			pstmt.close();
 			
 			pstmt = con.prepareStatement(
@@ -236,35 +239,123 @@ public class TeacherFunctions {
 	
 	/**
 	 * Function employed to retrieve the next level of a degree.
+	 * @throws SQLException 
 	 */
-	private static String getNextDegreeLevel(ResultSet currentStudyPeriod) {
+	private static String getNextDegreeLevel(Connection con, String currentStudyPeriod) throws SQLException {
+		String currentLevel = currentStudyPeriod.substring(0, 1);
+		String degreeCode = currentStudyPeriod.substring(1);
+		String nextLevel = "0";
 		
+		if (degreeCode.length() == 7) {
+			if (getNumberOfLevels(con, degreeCode) == 4) {
+				if (currentLevel == "P")
+					nextLevel = "4";
+				else if (Integer.parseInt(currentLevel) == 3)
+					nextLevel = "P";
+				else
+					nextLevel = Integer.toString(Integer.parseInt(nextLevel) + 1);
+			} else if (getNumberOfLevels(con, degreeCode) == 3) {
+				if (currentLevel == "P")
+					nextLevel = "3";
+				else if (Integer.parseInt(currentLevel) == 2)
+					nextLevel = "P";
+				else
+					nextLevel = Integer.toString(Integer.parseInt(nextLevel) + 1);
+			}
+		} else
+			nextLevel = Integer.toString((Integer.parseInt(currentLevel) + 1));
+		
+		return nextLevel;
 	}
 	
+	// Unsure where startDate comes from, passing it in externally for now.
 	/**
 	 * Function employed to register from, graduate from, or fail a period of study.
 	 * @throws SQLException 
 	 */
-	public static void progressToNextPeriod(
-			String currentStudentPeriod, String periodID, String DegreeLevel, String StudentID, Date StartDate) throws SQLException {
+	public static void progressToNextPeriod(String currentStudentPeriod, String startDate) throws SQLException {
 		Connection con = null;
 	    PreparedStatement pstmt = null;
 	    
-		try {
+		try {			
 			con = SQLFunctions.connectToDatabase();
 			pstmt = con.prepareStatement("SELECT * FROM StudentPeriod WHERE StudentPeriod = ?");
 			pstmt.setString(1, currentStudentPeriod);
 			ResultSet currentPeriod = pstmt.executeQuery();
 			pstmt.close();
 			
-			if (calculateIfPassed(currentStudentPeriod)) {
-				pstmt = con.prepareStatement(
-						"INSERT INTO StudentPeriod VALUES(?, ?, ?, ?, ?)");
-				pstmt.setString(1, periodID + StudentID);
-				pstmt.setString(2, periodID);
-				pstmt.setString(3, );
-				pstmt.setString(4, StudentID);
-				pstmt.setString(5, periodID + StudentID);
+			String nextPeriodID = Integer.toString(((int) currentPeriod.getString(2).charAt(0)) + 1);
+			
+			if (currentPeriod.getString(3).substring(0,1) == "P" || calculateIfPassed(currentStudentPeriod)) {
+				if (currentPeriod.getString(3).substring(0,1) == "P" || Integer.parseInt(currentPeriod.getString(3).substring(0,1)) < getNumberOfLevels(con, currentPeriod.getString(3).substring(1))) {
+					// Progress to next level.
+					pstmt = con.prepareStatement(
+							"INSERT INTO StudentPeriod VALUES(?, ?, ?, ?, ?)");
+					pstmt.setString(1, nextPeriodID + currentPeriod.getString(1).substring(1));
+					pstmt.setString(2, nextPeriodID);
+					pstmt.setString(3, getNextDegreeLevel(con, currentPeriod.getString(3)));
+					pstmt.setString(4, currentPeriod.getString(4));
+					pstmt.setString(5, startDate);
+					pstmt.executeUpdate();
+					pstmt.close();					
+				} else {
+					// Graduate.
+					System.out.println("Student has graduated with a " + getDegreeClass(currentPeriod.getString(1).substring(1)));
+				}
+			} else {
+				// If period failed.
+				if (currentPeriod.getString(3).charAt(4) == 'P') {
+					// < Masters stuff.
+				} else if (currentPeriod.getString(3).substring(0,1) == "4") {
+					// Graduation with BSc.
+				} else if (currentPeriod.getString(3).substring(0,1) == "3") {
+					// Only resit for non-honours.
+				} else {
+					// Repeat current level if not already repeated.
+					pstmt = con.prepareStatement(
+							"SELECT COUNT (*) FROM StudentPeriod WHERE DegreeLevel = ?");
+					pstmt.setString(1, currentPeriod.getString(3));
+					ResultSet totalRepeats = pstmt.executeQuery();
+					pstmt.close();
+					totalRepeats.next();
+					
+					if (totalRepeats.getInt(1) > 1) {
+						System.out.println("Student has failed to progress.");	 
+					} else {
+						// Repeat level and insert grades for modules already passed.
+						pstmt = con.prepareStatement(
+								"INSERT INTO StudentPeriod VALUES(?, ?, ?, ?, ?)");
+						pstmt.setString(1, nextPeriodID + currentPeriod.getString(1).substring(1));
+						pstmt.setString(2, nextPeriodID);
+						pstmt.setString(3, currentPeriod.getString(3));
+						pstmt.setString(4, currentPeriod.getString(4));
+						pstmt.setString(5, startDate);
+						pstmt.executeUpdate();
+						pstmt.close();
+						
+						pstmt = con.prepareStatement(
+								"SELECT * FROM Grades WHERE DegreeLevel = ?");
+						pstmt.setString(1, currentPeriod.getString(3));
+						ResultSet carriedGrades = pstmt.executeQuery();
+						pstmt.close();
+						
+						while (carriedGrades.next()) {
+							pstmt = con.prepareStatement(
+									"INSERT INTO Grades VALUES (?, ?, ?, ?)");
+							pstmt.setString(1, carriedGrades.getString(1));
+							pstmt.setString(2, nextPeriodID + currentPeriod.getString(1).substring(1));
+							
+							if ((carriedGrades.getInt(3) >= 40) || (carriedGrades.getInt(4) >= 40)) {
+								pstmt.setInt(3, carriedGrades.getInt(3));
+								pstmt.setInt(4, carriedGrades.getInt(4));
+							} else {
+								// Repeated year grades capped to pass mark, stored as resit.
+								pstmt.setInt(3, -1);
+								pstmt.setInt(4, -1);
+							}
+						}
+					}
+				}
 			}
 		} finally {
 			SQLFunctions.closeAll(con, pstmt);
@@ -275,10 +366,10 @@ public class TeacherFunctions {
 	 * Function employed to retrieve the total number of levels containing modules on a degree course.
 	 * @throws SQLException 
 	 */
-	private static int getNumberOfLevels(Connection con, ResultSet StudentPeriods) throws SQLException {
+	private static int getNumberOfLevels(Connection con, String DegreeCode) throws SQLException {
 		PreparedStatement pstmt = con.prepareStatement(
 				"SELECT COUNT(*) FROM DegreeLevel WHERE DegreeCode = ? AND Level <> 'P'");
-		pstmt.setString(1, StudentPeriods.getString(3).substring(1));
+		pstmt.setString(1, DegreeCode);
 		int level = pstmt.executeQuery().getInt(1);
 		pstmt.close();
 		return level;
@@ -303,7 +394,7 @@ public class TeacherFunctions {
 			pstmt.setString(1, StudentID);
 			ResultSet StudentPeriods = pstmt.executeQuery();
 			
-			int degreeLength = getNumberOfLevels(con, StudentPeriods);
+			int degreeLength = getNumberOfLevels(con, StudentPeriods.getString(3).substring(1));
 			
 			// Calculates grade weightings.
 			while (StudentPeriods.next()) {
@@ -349,7 +440,7 @@ public class TeacherFunctions {
 					finalDegreeClass = "Pass (Non-Honours)";
 				else
 					finalDegreeClass = "Fail";
-			} else if (degreeLength >= 4) {
+			} else if (degreeLength == 4) {
 				if (finalMean >= 69.5)
 					finalDegreeClass = "First Class";
 				else if (finalMean >= 59.5)
