@@ -1,7 +1,8 @@
-//*
+/**
  * TeacherFunctions.java
  * @author Matt Prestwich
  * @author Byron Slater
+ * @author James Taylor
  */
 
 /**
@@ -101,24 +102,19 @@ public class TeacherFunctions {
 	}
 	
 	/**
-	 * Function employed to retrieve the current degree level.
+	 * Function employed to retrieve the current degree level of a study period.
 	 * @throws SQLException 
 	 */
-	private static int getDegreeLevel(
+	public static int getDegreeLevel(
 			Connection con, String StudentPeriod) throws SQLException {
 		PreparedStatement pstmt = con.prepareStatement(
-	    		"SELECT * FROM StudentPeriod WHERE StudentPeriod = ?");
+	    		"SELECT DegreeLevel.Level FROM DegreeLevel JOIN StudentPeriod ON DegreeLevel.DegreeLevel = StudentPeriod.DegreeLevel WHERE StudentPeriod = ?");
 	    pstmt.setString(1, StudentPeriod);
 	    ResultSet rs = pstmt.executeQuery();
-	    pstmt = con.prepareStatement(
-	    		"SELECT * FROM DegreeLevel WHERE DegreeLevel = ?");
-	    pstmt.setString(1, rs.getString(3));
-	    ResultSet rs1 = pstmt.executeQuery();
-	    int level = Integer.parseInt(rs1.getString(3));
+	    rs.next();
+	    int level = rs.getInt(1);
 	    rs.close();
-	    rs1.close();
 	    pstmt.close();
-	    
 	    return level;
 	}
 	
