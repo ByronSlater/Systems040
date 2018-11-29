@@ -92,7 +92,6 @@ public class AdminFunctions {
 			pstmt.setString(1, deptCode);
 			pstmt.setString(2, deptName);
 			pstmt.executeUpdate();
-			System.out.println("Department added successfully.");
 		}
 		catch (SQLException ex) {
 		    ex.printStackTrace();
@@ -215,7 +214,7 @@ public class AdminFunctions {
 			pstmt.setString(1, ModuleID);
 			pstmt.setString(2, Dept);
 			pstmt.setInt(3, Credits);
-			pstmt.setString(4, TimePeriod);
+			pstmt.setString(4, TimePeriod); //Time period is the CHAR A/S/U/Y (Autumn,Spring,Summer,Year)
 			pstmt.setString(5, ModuleTitle);
 			pstmt.executeUpdate();
 			System.out.println("Module added successfully.");
