@@ -14,7 +14,6 @@ import java.sql.*;
 import java.util.ArrayList;
 
 public class SQLFunctions {
-	
 	public static Connection connectToDatabase() throws SQLException {
 		return DriverManager.getConnection(
 				"jdbc:mysql://stusql.dcs.shef.ac.uk/team040",
@@ -37,14 +36,14 @@ public class SQLFunctions {
 		}
 	}
 
+	/**
+	 * Should definitely not be called with unclean inputs, but we won't so it's okay
+	 */
 	public static ArrayList<Object> columnToList(String table, String column) {
-		String query = "SELECT ? FROM ?;";
+		String query = "SELECT " + column + " FROM " + table + ";";
 		ArrayList<Object> ret = new ArrayList<>();
 		try(Connection conn = connectToDatabase();
 		    PreparedStatement pstmt = conn.prepareStatement(query)) {
-
-			pstmt.setString(1, column);
-			pstmt.setString(2, table);
 
 			try(ResultSet rs = pstmt.executeQuery()) {
 				while(rs.next()) {

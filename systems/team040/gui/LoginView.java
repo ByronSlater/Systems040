@@ -8,7 +8,7 @@ import java.awt.event.ActionListener;
 /**
  * This view is the login page for the application
  */
-public class LoginView extends MyPanel {
+class LoginView extends MyPanel {
    private JTextField username;
    private JPasswordField password;
    private JButton login;
@@ -27,11 +27,11 @@ public class LoginView extends MyPanel {
         getCenterPanel().add(password);
     }
 
-    public String getEnteredUsername() {
+    String getEnteredUsername() {
         return username.getText();
     }
 
-    public char[] getEnteredPassword() {
+    char[] getEnteredPassword() {
         return password.getPassword();
     }
 }

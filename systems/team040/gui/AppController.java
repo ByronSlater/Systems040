@@ -2,6 +2,7 @@ package systems.team040.gui;
 
 import systems.team040.functions.AccountType;
 import systems.team040.functions.Hasher;
+import systems.team040.functions.RegistrarFunctions;
 import systems.team040.functions.SQLFunctions;
 
 import java.awt.*;
@@ -21,22 +22,27 @@ public class AppController {
     private UserType currentUser;
 
     AppController() {
-        currentUser = null;
+        EventQueue.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                currentUser = null;
 
-        frame = new JFrame();
-        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        contentPane = frame.getContentPane();
+                frame = new JFrame();
+                frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+                contentPane = frame.getContentPane();
 
-        frame.setResizable(false);
-        frame.setSize(1000, 600);
-        frame.setLocation(
-                GUI.screenSize.width / 2 - 500,
-                GUI.screenSize.height / 2 - 300
-        );
+                frame.setResizable(false);
+                frame.setSize(1000, 600);
+                frame.setLocation(
+                        GUI.screenSize.width / 2 - 500,
+                        GUI.screenSize.height / 2 - 300
+                );
 
-        frame.setVisible(true);
+                frame.setVisible(true);
 
-        changeView(createLoginScreen());
+                changeView(createLoginScreen());
+            }
+        });
     }
 
     void changeView(JPanel newPanel) {
@@ -44,27 +50,6 @@ public class AppController {
         contentPane.add(newPanel);
         frame.revalidate();
         frame.repaint();
-    }
-
-    void showGradingView() {
-        GradeStudentView view = new GradeStudentView();
-        changeView(view);
-        view.getBackButton().addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                showTeacherSwitchboard();
-            }
-        });
-    }
-
-    void showTeacherSwitchboard() {
-
-    }
-
-    JPanel createAddStudentView() {
-        AddStudentView view = new AddStudentView();
-
-        return view;
     }
 
     /**
@@ -146,7 +131,6 @@ public class AppController {
         }
     }
 
-
     void logout() {
         currentUser = null;
         changeView(createLoginScreen());
@@ -212,9 +196,24 @@ public class AppController {
     }
 
     MyPanel addUser() {
-        MyPanel view = new MyPanel(true);
+        InputPanel view = new AddStudentView();
         view.getBackButton().addActionListener(e -> changeView(viewUsers()));
-        view.addButton("Add").addActionListener(e -> System.out.println("not done yet"));
+        view.addButton("Add").addActionListener(e -> {
+            if(!view.isOkay()) {
+                JOptionPane.showMessageDialog(null, "Invalid Inputs");
+                return;
+            }
+            RegistrarFunctions.addStudent(
+                    view.getString("title"),
+                    view.getString("forename"),
+                    view.getString("surname"),
+                    view.getString("tutor"),
+                    view.getString("degree"),
+                    "10-05-1995"
+            );
+
+            changeView(viewUsers());
+        });
         return view;
     }
 
@@ -323,12 +322,19 @@ public class AppController {
     }
 
     MyPanel addStudent() {
-        MyPanel view = new MyPanel(true);
-        view.getBackButton().addActionListener(e -> changeView(registrarHome()));
-        view.addButton("Add").addActionListener(e -> System.out.println("not implemented"));
-
+        InputPanel view = new AddStudentView();
+        view.getBackButton().addActionListener(e -> changeView(viewUsers()));
+        view.addButton("Add").addActionListener(e -> {
+            RegistrarFunctions.addStudent(
+                    view.getString("title"),
+                    view.getString("forename"),
+                    view.getString("surname"),
+                    view.getString("tutor"),
+                    view.getString("degree"),
+                    "10-05-1995"
+            );
+        });
         return view;
-
     }
 
     MyPanel deleteStudent() {

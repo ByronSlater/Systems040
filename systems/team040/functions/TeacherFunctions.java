@@ -238,7 +238,7 @@ public class TeacherFunctions {
 	 * Function employed to retrieve the next level of a degree.
 	 */
 	private static String getNextDegreeLevel(ResultSet currentStudyPeriod) {
-		
+		return "no2";
 	}
 	
 	/**
@@ -262,7 +262,7 @@ public class TeacherFunctions {
 						"INSERT INTO StudentPeriod VALUES(?, ?, ?, ?, ?)");
 				pstmt.setString(1, periodID + StudentID);
 				pstmt.setString(2, periodID);
-				pstmt.setString(3, );
+				pstmt.setString(3, "no");
 				pstmt.setString(4, StudentID);
 				pstmt.setString(5, periodID + StudentID);
 			}
