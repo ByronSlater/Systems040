@@ -1,5 +1,6 @@
 package systems.team040.gui;
 
+import systems.team040.functions.AccountType;
 import systems.team040.functions.Hasher;
 import systems.team040.functions.SQLFunctions;
 
@@ -12,6 +13,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.function.Supplier;
 import javax.swing.*;
+import javax.swing.border.Border;
 
 public class AppController {
     private JFrame frame;
@@ -65,10 +67,13 @@ public class AppController {
         return view;
     }
 
+    /**
+     * Creates the login screen
+     */
     JPanel createLoginScreen() {
         LoginView view = new LoginView();
 
-        view.getLogin().addActionListener(new ActionListener() {
+        view.addButton("Login").addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 tryLogin(view.getEnteredUsername(), view.getEnteredPassword());
@@ -90,7 +95,7 @@ public class AppController {
                 changeView(createTeacherView());
                 break;
             case "registrar":
-                changeView(createRegistrarSwitchboard());
+                changeView(registrarHome());
                 break;
             default:
                 tryProperLogin(username, password);
@@ -99,7 +104,7 @@ public class AppController {
     }
 
     private void tryProperLogin(String username, char[] password) {
-        String query = "SELECT Password FROM UserAccount WHERE Username = ?;";
+        String query = "SELECT Password, AccountType FROM UserAccount WHERE Username = ?;";
 
         try(Connection con = SQLFunctions.connectToDatabase();
             PreparedStatement pstmt = con.prepareStatement(query)) {
@@ -111,10 +116,26 @@ public class AppController {
                     System.out.println("invalid usename");
                     return;
                 }
-                String stored = rs.getString(1);
+
+                String stored = rs.getString("Password");
 
                 if(Hasher.validatePassword(password, stored)) {
                     System.out.println("Real account entered");
+                    AccountType at = AccountType.fromInt(rs.getInt("AccountType"));
+                    switch(at) {
+                        case Registrar:
+                            changeView(registrarHome());
+                            break;
+                        case Teacher:
+                            changeView(createTeacherView());
+                            break;
+                        case Student:
+                            changeView(createStudentView("0123"));
+                            break;
+                        case Admin:
+                            changeView(createAdminSwitchboard());
+                            break;
+                    }
                 } else {
                     System.out.println("wrong password");
                 }
@@ -132,9 +153,29 @@ public class AppController {
     }
 
     JPanel createTeacherView() {
-        TeacherView view = new TeacherView();
+        String query = "SELECT * FROM STUDENTS";
+        MyPanel view = createInfoPanel(query, false);
 
-        view.getLogout().addActionListener(e -> logout());
+        view.addButton("Log out").addActionListener(e -> logout());
+        view.addButton("View Grades").addActionListener(e -> changeView(viewGrades()));
+
+        return view;
+    }
+
+    MyPanel viewGrades() {
+        String query = "SELECT * FROM GRADES;";
+        MyPanel view = createInfoPanel(query, true);
+
+        view.getBackButton().addActionListener(e -> changeView(createTeacherView()));
+        view.addButton("Set grades").addActionListener(e -> changeView(addGrade()));
+
+        return view;
+    }
+
+    MyPanel addGrade() {
+        MyPanel view = new MyPanel(true);
+        view.getBackButton().addActionListener(e -> changeView(viewGrades()));
+        view.addButton("Set grade").addActionListener(e -> System.out.println("Not impleented"));
 
         return view;
     }
@@ -159,67 +200,162 @@ public class AppController {
         return createGenericSwitchboard(buttonTitles, funcs);
     }
 
-    JPanel viewUsers() {
+    MyPanel viewUsers() {
         String query = "SELECT * FROM UserAccount;";
+        MyPanel view = createInfoPanel(query, true);
 
-        return createInfoPanel(query, this::createAdminSwitchboard);
+        view.addButton("Add User").addActionListener(e -> changeView(addUser()));
+        view.addButton("Delete User").addActionListener(e -> changeView(deleteUser()));
+        view.getBackButton().addActionListener(e -> changeView(createAdminSwitchboard()));
+
+        return view;
     }
 
-    JPanel viewModules() {
+    MyPanel addUser() {
+        MyPanel view = new MyPanel(true);
+        view.getBackButton().addActionListener(e -> changeView(viewUsers()));
+        view.addButton("Add").addActionListener(e -> System.out.println("not done yet"));
+        return view;
+    }
+
+    MyPanel deleteUser() {
+        MyPanel view = new MyPanel(true);
+        view.getBackButton().addActionListener(e -> changeView(viewUsers()));
+        view.addButton("Delete").addActionListener(e -> System.out.println("not done yet"));
+        return view;
+    }
+
+    MyPanel viewModules() {
         String query = "SELECT * FROM Module;";
+        MyPanel view = createInfoPanel(query, true);
 
-        return createInfoPanel(query, this::createAdminSwitchboard);
+        view.getBackButton().addActionListener(e -> changeView(createAdminSwitchboard()));
+        view.addButton("Add module").addActionListener(e -> changeView(addModule()));
+        view.addButton("Delete module").addActionListener(e -> changeView(deleteModule()));
+        return view;
     }
 
-    JPanel viewDegrees() {
+    MyPanel addModule() {
+        MyPanel view = new MyPanel(true);
+        view.getBackButton().addActionListener(e -> changeView(viewModules()));
+        view.addButton("Add").addActionListener(e -> System.out.println("not done yet"));
+        return view;
+    }
+
+    MyPanel deleteModule() {
+        MyPanel view = new MyPanel(true);
+        view.getBackButton().addActionListener(e -> changeView(viewModules()));
+        view.addButton("Delete").addActionListener(e -> System.out.println("not done yet"));
+        return view;
+    }
+
+    MyPanel viewDegrees() {
         String query = "SELECT * FROM Degree;";
+        MyPanel view = createInfoPanel(query, true);
 
-        return createInfoPanel(query, this::createAdminSwitchboard);
+        view.getBackButton().addActionListener(e -> changeView(createAdminSwitchboard()));
+        view.addButton("Add degree").addActionListener(e -> changeView(addDegree()));
+        view.addButton("Delete degree").addActionListener(e -> changeView(deleteDegree()));
+        return view;
     }
 
-    JPanel viewDepartments() {
+    MyPanel addDegree() {
+        MyPanel view = new MyPanel(true);
+        view.getBackButton().addActionListener(e -> changeView(viewDegrees()));
+        view.addButton("Add").addActionListener(e -> System.out.println("not done yet"));
+        return view;
+    }
+
+    MyPanel deleteDegree() {
+        MyPanel view = new MyPanel(true);
+        view.getBackButton().addActionListener(e -> changeView(viewDegrees()));
+        view.addButton("Delete").addActionListener(e -> System.out.println("not done yet"));
+        return view;
+    }
+    MyPanel viewDepartments() {
         String query = "SELECT * FROM Department;";
+        MyPanel view = createInfoPanel(query, true);
 
-        return createInfoPanel(query, this::createAdminSwitchboard);
+        view.getBackButton().addActionListener(e -> changeView(createAdminSwitchboard()));
+        view.addButton("Add department").addActionListener(e -> changeView(addDepartment()));
+        view.addButton("Delete department").addActionListener(e -> changeView(deleteDepartment()));
+        return view;
     }
 
-    JPanel linkModules() {
-        String query = "SELECT * FROM Users;";
-
-        return createInfoPanel(query, this::createAdminSwitchboard);
+    MyPanel addDepartment() {
+        MyPanel view = new MyPanel(true);
+        view.getBackButton().addActionListener(e -> changeView(viewDepartments()));
+        view.addButton("Add").addActionListener(e -> System.out.println("not done yet"));
+        return view;
     }
 
-    JPanel createRegistrarSwitchboard() {
-        String[] buttonTitles = {
-                "Nothin"
-        };
-        Supplier<JPanel>[] funcs = new Supplier[] {
-                this::createRegistrarSwitchboard
-        };
-
-        return createGenericSwitchboard(buttonTitles, funcs);
+    MyPanel deleteDepartment() {
+        MyPanel view = new MyPanel(true);
+        view.getBackButton().addActionListener(e -> changeView(viewDepartments()));
+        view.addButton("Delete").addActionListener(e -> System.out.println("not done yet"));
+        return view;
+    }
+    MyPanel linkModules() {
+        MyPanel view = new MyPanel(true);
+        view.getBackButton().addActionListener(e -> changeView(createAdminSwitchboard()));
+        return view;
     }
 
-    JPanel createInfoPanel(String query, Supplier<JPanel> backButtonFunc) {
+    MyPanel registrarHome() {
+        String query = "SELECT * FROM STUDENTS;";
+        MyPanel view = createInfoPanel(query, false);
+        view.addButton("Log out").addActionListener(e -> logout());
+        view.addButton("View individual student").addActionListener(
+                e -> changeView(selectStudent())
+        );
+        view.addButton("Add student");
+        view.addButton("Delete student");
+
+        return view;
+    }
+
+    MyPanel selectStudent() {
+        MyPanel view = new MyPanel(true);
+        view.getBackButton().addActionListener(e -> changeView(registrarHome()));
+        view.addButton("Select").addActionListener(e -> System.out.println("not implemented"));
+
+        return view;
+    }
+
+    MyPanel addStudent() {
+        MyPanel view = new MyPanel(true);
+        view.getBackButton().addActionListener(e -> changeView(registrarHome()));
+        view.addButton("Add").addActionListener(e -> System.out.println("not implemented"));
+
+        return view;
+
+    }
+
+    MyPanel deleteStudent() {
+        MyPanel view = new MyPanel(true);
+        view.getBackButton().addActionListener(e -> changeView(registrarHome()));
+        view.addButton("Delete").addActionListener(e -> System.out.println("not implemented"));
+
+        return view;
+
+    }
+
+    MyPanel createInfoPanel(String query, boolean hasBackButton) {
+        MyPanel view = new MyPanel(hasBackButton);
+
         JScrollPane scrollPane = new JScrollPane(new JTable(GUI.queryToTable(query)));
         JPanel infoPanel = new JPanel(new BorderLayout());
 
-        infoPanel.add(scrollPane, BorderLayout.CENTER);
+        view.add(scrollPane, BorderLayout.CENTER);
 
-        JPanel buttonsPanel = new JPanel(new FlowLayout());
-        JButton backButton = new JButton("Back");
-
-        backButton.addActionListener(e -> changeView(backButtonFunc.get()));
-        buttonsPanel.add(backButton);
-
-        infoPanel.add(buttonsPanel, BorderLayout.PAGE_END);
-
-        return infoPanel;
+        return view;
     }
 
     JPanel createStudentView(String regNo) {
-        StudentView view = new StudentView();
-        view.getLogout().addActionListener(e -> logout());
+        // TODO - write a good query here
+        String query = "SELECT * FROM STUDENTS;";
+        MyPanel view = createInfoPanel(query, false);
+        view.addButton("Log out").addActionListener(e -> logout());
         return view;
     }
 
@@ -262,6 +398,8 @@ public class AppController {
         logoutButton.addActionListener(e -> changeView(createLoginScreen()));
         logoutPanel.add(logoutButton);
         switchboard.add(logoutPanel, BorderLayout.PAGE_END);
+
+        buttonPanel.setBorder(BorderFactory.createLineBorder(Color.BLACK));
 
         return switchboard;
     }
