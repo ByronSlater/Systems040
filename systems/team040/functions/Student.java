@@ -110,7 +110,7 @@ public class Student {
      * Returns a randomly generated password with PASSWORD_LENGTH random alphabetic characters and one random
      * number interspersed
      */
-    private static char[] generateRandomPassword() {
+    public static char[] generateRandomPassword() {
         char[] availChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".toCharArray();
         char[] password = new char[PASSWORD_LENGTH];
 
