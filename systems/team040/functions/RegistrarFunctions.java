@@ -35,8 +35,11 @@ public class RegistrarFunctions {
 					"SELECT MAX(StudentID) FROM Student");
 			ResultSet maxID = pstmt.executeQuery();
 			maxID.next();
-			StudentID = Integer.toString((Integer.parseInt(maxID.getString(1)) + 1));
-			//Generation of a unique Username by checking for usernames of the same form and incrementing the end value by 1 in duplicate cases.
+			if (maxID.getString(1) != null) {
+				StudentID = Integer.toString((Integer.parseInt(maxID.getString(1)) + 1));
+			} else {
+				StudentID = "000000001";}
+			//Generation of a unique username by checking for usernames of the same form and incrementing the end value by 1 in duplicate cases.
 			pstmt = con.prepareStatement(
 					"SELECT Forename,Surname FROM Student WHERE Surname = ?");
 			pstmt.setString(1, Surname);
@@ -72,7 +75,7 @@ public class RegistrarFunctions {
 			pstmt.setString(7, Username);
 			pstmt.executeUpdate();
 			//Gives the student a starting student study period with value A
-			registerStudent(("A" + StudentID), ("1" + Degree), StudentID, StartDate);
+			registerStudent(("A"), ("1" + Degree), StudentID, StartDate);
 			//Assigns the user to all the core modules for their degree
 			pstmt = con.prepareStatement(
 					"SELECT * FROM DegreeModule WHERE DegreeLevel = ? AND isCore = 1");
@@ -122,9 +125,9 @@ public class RegistrarFunctions {
 	    PreparedStatement pstmt = null;
 
 		try {
-		    String query = "INSERT INTO StudentPeriod VALUES (?);";
 			con = SQLFunctions.connectToDatabase();			
-			pstmt = con.prepareStatement(query);
+			pstmt = con.prepareStatement(
+					"INSERT INTO StudentPeriod VALUES (?,?,?,?,?);");
 			pstmt.setString(1, PeriodID + StudentID);
 			pstmt.setString(2, PeriodID);
 			pstmt.setString(3, DegreeLevel);
@@ -149,8 +152,8 @@ public class RegistrarFunctions {
     		con = SQLFunctions.connectToDatabase();	
     		pstmt = con.prepareStatement(
     				"INSERT INTO Grades VALUES (?,?,null,null)");
-    		pstmt.setString(1, Module);
-    		pstmt.setString(2, StudentPeriod);
+    		pstmt.setString(1, StudentPeriod);
+    		pstmt.setString(2, Module);
     		pstmt.executeUpdate();
     	}
 		catch (SQLException ex) {
