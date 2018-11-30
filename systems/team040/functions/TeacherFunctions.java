@@ -282,6 +282,7 @@ public class TeacherFunctions {
 			pstmt = con.prepareStatement("SELECT * FROM StudentPeriod WHERE StudentPeriod = ?");
 			pstmt.setString(1, currentStudentPeriod);
 			ResultSet currentPeriod = pstmt.executeQuery();
+			currentPeriod.next();
 			pstmt.close();
 			
 			String nextPeriodID = Integer.toString(((int) currentPeriod.getString(2).charAt(0)) + 1);
@@ -300,7 +301,7 @@ public class TeacherFunctions {
 					pstmt.close();					
 				} else {
 					// Graduate.
-					System.out.println("Student has graduated with a " + getDegreeClass(currentPeriod.getString(1).substring(1)));
+					System.out.println("Student has graduated with a " + getDegreeClass(currentPeriod.getString(1).substring(1), false));
 				}
 			} else {
 				// If period failed.
@@ -309,6 +310,7 @@ public class TeacherFunctions {
 					
 				} else if (currentPeriod.getString(3).substring(0,1) == "4") {
 					// Graduation with BSc.
+					System.out.println("Student has graduated with a BSc of class " + getDegreeClass(currentPeriod.getString(1).substring(1), true));
 					
 				} else {
 					// Repeat current level if not already repeated.
@@ -379,7 +381,7 @@ public class TeacherFunctions {
 	 * Function employed to calculate the overall degree result.
 	 * @throws SQLException 
 	 */
-	public static String getDegreeClass(String StudentID) throws SQLException {
+	public static String getDegreeClass(String StudentID, boolean truncatedMSc) throws SQLException {
 		Connection con = null;
 	    PreparedStatement pstmt = null;
 	    double finalGrade = 0;
@@ -397,15 +399,17 @@ public class TeacherFunctions {
 			
 			int degreeLength = getNumberOfLevels(con, StudentPeriods.getString(3).substring(1));
 			
-			// Calculates grade weightings.
+			// Calculates grade weightings, disregarding failed 4th level from MSc if necessary.
 			while (StudentPeriods.next()) {
 				if (StudentPeriods.getString(3).substring(0, 1) == "P")
 					continue;
-				else if (Integer.parseInt(StudentPeriods.getString(3).substring(0,1)) == 1 && degreeLength == 1)
+				else if ((StudentPeriods.getString(3).substring(0,1) == "4") && truncatedMSc)
+					continue;
+				else if ((StudentPeriods.getString(3).substring(0,1) == "1") && degreeLength == 1)
 					finalGrade = calculateWeightedMeanGrade(StudentPeriods.getString(1));
-				else if (Integer.parseInt(StudentPeriods.getString(3).substring(0,1)) == 1)
+				else if (StudentPeriods.getString(3).substring(0,1) == "1")
 						continue;
-				else if (Integer.parseInt(StudentPeriods.getString(3).substring(0,1)) == 2)
+				else if (StudentPeriods.getString(3).substring(0,1) == "2")
 					finalGrade += calculateWeightedMeanGrade(StudentPeriods.getString(1));
 				else
 					finalGrade += (2 * calculateWeightedMeanGrade(StudentPeriods.getString(1)));
@@ -413,9 +417,12 @@ public class TeacherFunctions {
 	
 			if (degreeLength == 1)
 				finalMean = finalGrade;
-			else if (degreeLength == 4)
-				finalMean = (finalGrade / 5);
-			else
+			else if (degreeLength == 4) {
+				if (truncatedMSc)
+					finalMean = (finalGrade / 3);
+				else
+					finalMean = (finalGrade / 5);
+			} else
 				finalMean = (finalGrade / 3);
 			
 			// Determines final degree classifications.
