@@ -306,10 +306,10 @@ public class TeacherFunctions {
 				// If period failed.
 				if (currentPeriod.getString(3).charAt(4) == 'P') {
 					// < Masters stuff.
+					
 				} else if (currentPeriod.getString(3).substring(0,1) == "4") {
 					// Graduation with BSc.
-				} else if (currentPeriod.getString(3).substring(0,1) == "3") {
-					// Only resit for non-honours.
+					
 				} else {
 					// Repeat current level if not already repeated.
 					pstmt = con.prepareStatement(
@@ -393,6 +393,7 @@ public class TeacherFunctions {
 					"SELECT * FROM StudentPeriod WHERE StudentID = ?");
 			pstmt.setString(1, StudentID);
 			ResultSet StudentPeriods = pstmt.executeQuery();
+			pstmt.close();
 			
 			int degreeLength = getNumberOfLevels(con, StudentPeriods.getString(3).substring(1));
 			
@@ -428,7 +429,17 @@ public class TeacherFunctions {
 				else
 					finalDegreeClass = "Fail";
 			} else if (degreeLength == 3) {
-				if (finalMean >= 69.5)
+				// Can only achieve Pass (non-honours) if failed level 3.
+				pstmt = con.prepareStatement(
+						"SELECT COUNT (*) FROM StudentPeriod WHERE DegreeLevel = ?");
+				pstmt.setString(1, "3" + StudentPeriods.getString(3).substring(1));
+				ResultSet repeats = pstmt.executeQuery();
+				repeats.next();
+				pstmt.close();
+				
+				if (repeats.getInt(1) > 1)
+					finalDegreeClass = "Pass (Non-Honours)";
+				else if (finalMean >= 69.5)
 					finalDegreeClass = "First Class";
 				else if (finalMean >= 59.5)
 					finalDegreeClass = "Upper Second";
@@ -450,6 +461,7 @@ public class TeacherFunctions {
 				else
 					finalDegreeClass = "Fail";
 			}
+			StudentPeriods.close();
 			
 		} finally {
 			SQLFunctions.closeAll(con, pstmt);
