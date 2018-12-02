@@ -125,7 +125,7 @@ public class AdminFunctions {
 	/**
 	 * Function employed to add degree courses.
 	 */
-	public static void addDegree(String degreeCode, String degreeName, int degreeLength) {
+	public static void addDegree(String degreeCode, String degreeName, int degreeLength, boolean yearInIndustry) {
 	    Connection con = null;
 		PreparedStatement pstmt = null;
 
@@ -141,8 +141,8 @@ public class AdminFunctions {
 			for(int i=1; i<=degreeLength; i++){
 				assignDegreeLevels(Integer.toString(i) + degreeCode, degreeCode, Integer.toString(i));
 			}
-			if (degreeCode.length() == 7) {
-				assignDegreeLevels("Y" + degreeCode, degreeCode, "Y");
+			if (yearInIndustry) {
+				assignDegreeLevels("P" + degreeCode, degreeCode, "P");
 			}
 		}
 		catch (SQLException ex) {
