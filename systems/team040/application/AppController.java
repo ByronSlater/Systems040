@@ -257,8 +257,18 @@ public class AppController {
 
 
         view.addButton("Delete").addActionListener(e -> {
+            String userToDelete = view.getString("username");
+
+            if (userToDelete.equals(LoggedInUser.getInstance().getUsername())) {
+                JOptionPane.showMessageDialog(
+                        null,
+                        "Can't delete your own user."
+                );
+                return;
+            }
+
             try {
-                AdminFunctions.removeUser("", view.getString("username"));
+                AdminFunctions.removeUser(view.getString("username"));
                 changeView(viewUsers());
             } catch (SQLException e1) {
                 JOptionPane.showMessageDialog(
@@ -496,7 +506,7 @@ public class AppController {
         } catch (SQLException e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(
-                    null
+                    null,
                     "Couldn't get departments: " + e.getCause().getMessage()
             );
         }

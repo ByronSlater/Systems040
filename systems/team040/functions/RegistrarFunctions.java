@@ -285,29 +285,25 @@ public class RegistrarFunctions {
 		int creditTotal = 0;
 		Connection con = null;
 		PreparedStatement pstmt = null;
+		String DegreeLevel = null;
 		try {
 			con = SQLFunctions.connectToDatabase();			
 			pstmt = con.prepareStatement(
 					"SELECT DegreeLevel FROM StudentPeriod WHERE StudentPeriod = ?");
 			pstmt.setString(1, StudentPeriod);
 			ResultSet student = pstmt.executeQuery();
-			student.next();
-			String DegreeLevel = student.getString(1);
+			while(student.next()) {
+				DegreeLevel = student.getString(1);
+			}
 			student.close();
-
 			pstmt = con.prepareStatement(
-					"SELECT * FROM DegreeModule WHERE DegreeLevel = ?");
+					"SELECT Module.Credits FROM Module "
+					+ "JOIN DegreeModule ON Module.ModuleID = DegreeModule.ModuleID "
+					+ "WHERE DegreeModule.DegreeLevel = ?");
 			pstmt.setString(1, DegreeLevel);
 			ResultSet modules = pstmt.executeQuery();
-			
 			while (modules.next()) {
-				pstmt = con.prepareStatement(
-						"SELECT ModuleID,Credits FROM Module WHERE ModuleID = ?");
-				pstmt.setString(1, modules.getString(1));
-				ResultSet module = pstmt.executeQuery();
-				module.next();
-				creditTotal += module.getInt(2);
-				module.close();
+				creditTotal += modules.getInt(1);
 			}
 			modules.close();
 		}
