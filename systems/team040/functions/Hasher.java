@@ -16,6 +16,10 @@ public class Hasher {
     private static final String RANDOM_ALGORITHM = "SHA1PRNG";
     private static final String HASH_ALGORITHM = "PBKDF2WithHmacSHA1";
 
+    /**
+     * Generates a random string of bytes to be used as a salt in the hashing algorithm, length decided by
+     * SALT_LEN variable
+     */
     private static byte[] generateSalt() {
         SecureRandom sr;
         try {
@@ -31,6 +35,10 @@ public class Hasher {
         return retVal;
     }
 
+    /**
+     * Given a password, this generates the digest that we put into the database, in the form of
+     * salt + '$' + hash(salt + password)
+     */
     public static String generateDigest(char[] password) {
         byte[] salt = generateSalt();
         byte[] hash = hash(password, salt);
@@ -38,8 +46,11 @@ public class Hasher {
         return DatatypeConverter.printHexBinary(salt) + "$" + DatatypeConverter.printHexBinary(hash);
     }
 
+    /**
+     * Hashes a given password + salt combo using the PBKDF2 algorithm
+     */
     private static byte[] hash(char[] password, byte[] salt) {
-        SecretKeyFactory skf = null;
+        SecretKeyFactory skf;
         try {
             skf = SecretKeyFactory.getInstance(HASH_ALGORITHM);
             PBEKeySpec keySpec = new PBEKeySpec(password, salt, ITERATIONS, KEY_LEN);
@@ -51,6 +62,9 @@ public class Hasher {
         }
     }
 
+    /**
+     * Checks that a password patches what is stored on the database
+     */
     public static boolean validatePassword(char[] entered, String stored) {
         String[] parts = stored.split("\\$");
         byte[] salt = DatatypeConverter.parseHexBinary(parts[0]);

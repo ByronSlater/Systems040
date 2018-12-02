@@ -1,4 +1,6 @@
-package systems.team040.gui;
+package systems.team040.gui.forms;
+
+import systems.team040.gui.GUI;
 
 import javax.swing.*;
 import java.awt.*;

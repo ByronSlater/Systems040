@@ -16,7 +16,7 @@ public class AdminFunctions {
 	 * Function employed to create user accounts and set their privileges.
 	 * @throws SQLException
 	 */
-	public static void createAccount(String username, char[] password, int level) {
+	public static void createAccount(String username, char[] password, int level) throws SQLException {
 		String digest = Hasher.generateDigest(password);
 		String query = "INSERT INTO UserAccount VALUES (?, ?, ?);";
 
@@ -28,16 +28,13 @@ public class AdminFunctions {
             pstmt.setInt(3, level);
             pstmt.executeUpdate();
 		}
-		catch (SQLException ex) {
-		    ex.printStackTrace();
-		}
 	}
 	
 	/**
 	 * Function employed to update user passwords.
 	 * @
 	 */
-	public static void changePassword(String username, char[] newPass) {
+	public static void changePassword(String username, char[] newPass) throws SQLException {
 	    String query = "UPDATE UserAccount SET password = ? WHERE username = ?;";
 	    String digest = Hasher.generateDigest(newPass);
 
@@ -48,16 +45,13 @@ public class AdminFunctions {
 			pstmt.setString(2, username);
 			pstmt.executeUpdate();
 		}
-		catch (SQLException ex) {
-		    ex.printStackTrace();
-		}
 	}
 	
 	/**
 	 * Function employed to remove user accounts.
 	 * @
 	 */
-	public static void removeUser(String selfUsername, String username) {
+	public static void removeUser(String selfUsername, String username) throws SQLException {
 		Connection con = null;
 		PreparedStatement pstmt = null;
 
@@ -70,9 +64,6 @@ public class AdminFunctions {
 				pstmt.executeUpdate();
 			}
 		}
-		catch (SQLException ex) {
-		    ex.printStackTrace();
-		}
 		finally {
 			SQLFunctions.closeAll(con, pstmt);
 		}
@@ -81,7 +72,7 @@ public class AdminFunctions {
 	/**
 	 * Function employed to add departments.
 	 */
-	public static void addDepartment(String deptCode, String deptName) {
+	public static void addDepartment(String deptCode, String deptName) throws SQLException {
 	    Connection con = null;
 	    PreparedStatement pstmt = null;
 
@@ -93,9 +84,6 @@ public class AdminFunctions {
 			pstmt.setString(2, deptName);
 			pstmt.executeUpdate();
 		}
-		catch (SQLException ex) {
-		    ex.printStackTrace();
-		}
 		finally {
 			SQLFunctions.closeAll(con, pstmt);
 		}
@@ -104,7 +92,7 @@ public class AdminFunctions {
 	/**
 	 * Function employed to remove departments.
 	 */
-	public static void removeDepartment(String deptCode) {
+	public static void removeDepartment(String deptCode) throws SQLException {
 	    Connection con = null;
 	    PreparedStatement pstmt = null;
 
@@ -115,9 +103,6 @@ public class AdminFunctions {
 			pstmt.setString(1, deptCode);
 			pstmt.executeUpdate();
 		}
-		catch (SQLException ex) {
-		    ex.printStackTrace();
-		}
 		finally {
 			SQLFunctions.closeAll(con, pstmt);
 		}
@@ -126,7 +111,7 @@ public class AdminFunctions {
 	/**
 	 * Function employed to add degree courses.
 	 */
-	public static void addDegree(String degreeCode, String degreeName, int degreeLength) {
+	public static void addDegree(String degreeCode, String degreeName, int degreeLength) throws SQLException {
 	    Connection con = null;
 		PreparedStatement pstmt = null;
 
@@ -140,14 +125,11 @@ public class AdminFunctions {
 			
 			
 			for(int i=1; i<=degreeLength; i++){
-				assignDegreeLevels(Integer.toString(i) + degreeCode, degreeCode, Integer.toString(i));
+				assignDegreeLevels(i + degreeCode, degreeCode, Integer.toString(i));
 			}
 			if (degreeCode.length() == 7) {
 				assignDegreeLevels("Y" + degreeCode, degreeCode, "Y");
 			}
-		}
-		catch (SQLException ex) {
-		    ex.printStackTrace();
 		}
 		finally {
 			SQLFunctions.closeAll(con, pstmt);
@@ -157,7 +139,7 @@ public class AdminFunctions {
 	/**
 	 * Function employed to remove degree courses.
 	 */
-	public static void removeDegree(String degreeCode) {
+	public static void removeDegree(String degreeCode) throws SQLException {
 		Connection con = null;
 		PreparedStatement pstmt = null;
 
@@ -168,9 +150,6 @@ public class AdminFunctions {
 			pstmt.setString(1, degreeCode);
 			pstmt.executeUpdate();
 		}
-		catch (SQLException ex) {
-		    ex.printStackTrace();
-		}
 		finally {
 			SQLFunctions.closeAll(con, pstmt);
 		}
@@ -179,7 +158,7 @@ public class AdminFunctions {
 	/**
 	 * Function employed to assign a department or departments to a degree course.
 	 */
-	public static void assignDegreeDepartment(String DegreeCode, String Dept, int isPrimary) {
+	public static void assignDegreeDepartment(String DegreeCode, String Dept, int isPrimary) throws SQLException {
 	    Connection con = null;
 	    PreparedStatement pstmt = null;
 
@@ -192,9 +171,6 @@ public class AdminFunctions {
 			pstmt.setInt(3, isPrimary);
 			pstmt.executeUpdate();
 		}
-		catch (SQLException ex) {
-		    ex.printStackTrace();
-		}
 		finally {
 			SQLFunctions.closeAll(con, pstmt);
 		}
@@ -203,34 +179,27 @@ public class AdminFunctions {
 	/**
 	 * Function employed to add modules.
 	 */
-	public static void addModule(String ModuleID, String Dept, int Credits, String TimePeriod, String ModuleTitle) {
-	    Connection con = null;
-	    PreparedStatement pstmt = null;
+	public static void addModule(
+			String moduleID, String dept, int credits, String timePeriod, String moduleTitle
+	) throws SQLException {
+		String query = "INSERT INTO Module VALUES (?, ?, ?, ?, ?);";
+		try(Connection con = SQLFunctions.connectToDatabase();
+			PreparedStatement pstmt = con.prepareStatement(query)) {
 
-		try {
-			con = SQLFunctions.connectToDatabase();
-			pstmt = con.prepareStatement(
-					"INSERT INTO Module VALUES (?, ?, ?, ?, ?)");
-			pstmt.setString(1, ModuleID);
-			pstmt.setString(2, Dept);
-			pstmt.setInt(3, Credits);
-			pstmt.setString(4, TimePeriod); //Time period is the CHAR A/S/U/Y (Autumn,Spring,Summer,Year)
-			pstmt.setString(5, ModuleTitle);
+			pstmt.setString(1, moduleID);
+			pstmt.setString(2, dept);
+			pstmt.setInt(3, credits);
+			pstmt.setString(4, timePeriod); //Time period is the CHAR A/S/U/Y (Autumn,Spring,Summer,Year)
+			pstmt.setString(5, moduleTitle);
 			pstmt.executeUpdate();
 			System.out.println("Module added successfully.");
-		}
-		catch (SQLException ex) {
-		    ex.printStackTrace();
-		}
-		finally {
-			SQLFunctions.closeAll(con, pstmt);
 		}
 	}	
 	
 	/**
 	 * Function employed to remove modules.
 	 */
-	public static void removeModule(String ModuleID) {
+	public static void removeModule(String ModuleID) throws SQLException {
 	    Connection con = null;
 	    PreparedStatement pstmt = null;
 
@@ -241,11 +210,7 @@ public class AdminFunctions {
 			pstmt.setString(1, ModuleID);
 			pstmt.executeUpdate();
 			System.out.println("Module removed successfully.");
-		}
-		catch (SQLException ex) {
-		    ex.printStackTrace();
-		}
-		finally {
+		} finally {
 			SQLFunctions.closeAll(con, pstmt);
 		}
 	}
@@ -253,7 +218,7 @@ public class AdminFunctions {
 	/**
 	 * Function employed to assign modules to their degree courses.
 	 */
-	public static void assignModuleDegree(String ModuleID, String DegreeLevel, int Core) {
+	public static void assignModuleDegree(String ModuleID, String DegreeLevel, int Core) throws SQLException {
 		Connection con = null;
 		PreparedStatement pstmt = null;
 
@@ -266,9 +231,6 @@ public class AdminFunctions {
 			pstmt.setInt(3, Core);
 			pstmt.executeUpdate();
 		}
-		catch (SQLException ex) {
-		    ex.printStackTrace();
-		}
 		finally {
 			SQLFunctions.closeAll(con, pstmt);
 		}
@@ -277,7 +239,7 @@ public class AdminFunctions {
 	/**
 	 * Function employed to assign degree courses their modules. 
 	 */
-	public static void assignDegreeLevels(String DegreeLevel, String DegreeCode, String Level) {
+	public static void assignDegreeLevels(String DegreeLevel, String DegreeCode, String Level) throws SQLException {
 	    Connection con = null;
 	    PreparedStatement pstmt = null;
 
@@ -290,9 +252,6 @@ public class AdminFunctions {
 			pstmt.setString(2, DegreeCode);
 			pstmt.setString(3, Level);
 			pstmt.executeUpdate();
-		}
-		catch (SQLException ex) {
-		    ex.printStackTrace();
 		}
 		finally {
 			SQLFunctions.closeAll(con, pstmt);

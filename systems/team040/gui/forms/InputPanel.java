@@ -1,9 +1,12 @@
-package systems.team040.gui;
+package systems.team040.gui.forms;
+
+import systems.team040.gui.components.MyTextField;
 
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -13,78 +16,97 @@ import java.util.function.Supplier;
 public class InputPanel extends MyPanel {
     private HashMap<String, Supplier<String>> stringGetters;
     private HashMap<String, Supplier<Integer>> integerGetters;
-
+    protected String errorMessage;
     private ArrayList<MyTextField> needValidating;
 
-    InputPanel(boolean hasBackButton) {
+    public InputPanel(boolean hasBackButton) {
         super(hasBackButton);
         stringGetters = new HashMap<>();
         integerGetters = new HashMap<>();
         needValidating = new ArrayList<>();
     }
 
-    <T extends JComponent> void addStringInput(
+    public <T extends JComponent> void addStringInput(
             String label, String key, T component, Function<T, String> func) {
 
         JPanel inputPanel = new JPanel(new BorderLayout());
         inputPanel.add(new JLabel(label), BorderLayout.PAGE_START);
         inputPanel.add(component, BorderLayout.CENTER);
 
-        getCenterPanel().add(inputPanel);
+        centerPanel.add(inputPanel);
 
         stringGetters.put(key, () -> func.apply(component));
     }
 
-    void addStringInput(
+    public void addStringInput(
             String label, String key, MyTextField component, Function<MyTextField, String> func) {
 
         JPanel inputPanel = new JPanel(new BorderLayout());
         inputPanel.add(new JLabel(label), BorderLayout.PAGE_START);
         inputPanel.add(component, BorderLayout.CENTER);
 
-        getCenterPanel().add(inputPanel);
+        centerPanel.add(inputPanel);
 
         stringGetters.put(key, () -> func.apply(component));
         needValidating.add(component);
     }
 
-    <T extends JComponent> void addNumericInput(
+    public <T extends JComponent> void addNumericInput(
             String label, String key, T component, Function<T, Integer> func) {
 
         JPanel inputPanel = new JPanel(new BorderLayout());
         inputPanel.add(new JLabel(label), BorderLayout.PAGE_START);
         inputPanel.add(component, BorderLayout.CENTER);
 
-        getCenterPanel().add(inputPanel);
+        centerPanel.add(inputPanel);
         integerGetters.put(key, () -> func.apply(component));
     }
 
-    void createComboBox(String label, String key, ArrayList<String> list) {
+    public JComboBox<String> addComboBox(String label, String key, ArrayList<String> list) {
         JComboBox<String> cbb = new JComboBox<>(list.toArray(new String[list.size()]));
 
         JPanel inputPanel = new JPanel(new BorderLayout());
         inputPanel.add(new JLabel(label), BorderLayout.PAGE_START);
         inputPanel.add(cbb, BorderLayout.CENTER);
 
-        getCenterPanel().add(inputPanel);
-        stringGetters.put(key, () -> cbb.getSelectedItem().toString());
+        centerPanel.add(inputPanel);
+        stringGetters.put(key, () -> Objects.toString(cbb.getSelectedItem()));
+
+        return cbb;
     }
 
-    String getString(String key) {
+    public String getString(String key) {
         return stringGetters.get(key).get();
     }
 
-    int getInteger(String key) {
+    public int getInteger(String key) {
         return integerGetters.get(key).get();
     }
 
     boolean isOkay() {
+        boolean okay = true;
+        StringBuilder sb = new StringBuilder();
+
         for(MyTextField textField : needValidating) {
             if(!textField.isOkay()) {
-                return false;
+                if(okay) {
+                    sb.append("Errors found:\n");
+                }
+                okay = false;
+                if(textField.getText().isEmpty()) {
+                    sb.append("Input cannot be empty");
+                } else {
+                    sb.append('"');
+                    sb.append(textField.getText());
+                    sb.append("\" is not valid input");
+                }
             }
         }
 
-        return true;
+        return okay;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
     }
 }

@@ -114,14 +114,12 @@ public class Student {
      * number interspersed
      */
     public static char[] generateRandomPassword() {
-        char[] availChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".toCharArray();
+        char[] availChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890".toCharArray();
         char[] password = new char[PASSWORD_LENGTH];
 
         for(int i = 0; i < PASSWORD_LENGTH ; i++) {
             password[i] = availChars[(int)(Math.random() * availChars.length)];
         }
-
-        password[(int)(Math.random() * PASSWORD_LENGTH)] = (char)((int)(Math.random() * 10));
 
         return password;
     }

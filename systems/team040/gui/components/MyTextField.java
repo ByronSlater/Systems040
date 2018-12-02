@@ -1,13 +1,10 @@
-package systems.team040.gui;
+package systems.team040.gui.components;
 
 import javax.swing.*;
-import javax.swing.border.Border;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.PlainDocument;
 import java.awt.*;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 
 public class MyTextField extends JTextField {
     private String validationPattern;
@@ -20,7 +17,7 @@ public class MyTextField extends JTextField {
         return valid;
     }
 
-    MyTextField(String regex, boolean patternProvided) {
+    private MyTextField(String regex, boolean patternProvided) {
         this.patternProvided = patternProvided;
         validationPattern = regex;
         valid = "".matches(regex);
@@ -40,8 +37,8 @@ public class MyTextField extends JTextField {
         }
     }
 
-    MyTextField(String regex) { this(regex, true); }
-    MyTextField() { this("", false); }
+    public MyTextField(String regex) { this(regex, true); }
+    public MyTextField() { this("", false); }
 
     class MyDocument extends PlainDocument {
         @Override

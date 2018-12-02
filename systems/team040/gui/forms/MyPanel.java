@@ -1,14 +1,14 @@
-package systems.team040.gui;
+package systems.team040.gui.forms;
 
 import javax.swing.*;
 import java.awt.*;
 
 public class MyPanel extends JPanel {
-    private JPanel centerPanel;
-    private JPanel buttonsPanel;
-    private JButton backButton;
+    protected JPanel centerPanel;
+    protected JPanel buttonsPanel;
+    protected JButton backButton;
 
-    MyPanel(boolean hasBackButton) {
+    public MyPanel(boolean hasBackButton) {
         super(new BorderLayout());
         centerPanel = new JPanel(new FlowLayout());
         buttonsPanel = new JPanel(new FlowLayout());

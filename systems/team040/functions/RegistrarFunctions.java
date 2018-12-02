@@ -12,85 +12,154 @@
 
 package systems.team040.functions;
 
+import com.mysql.cj.util.StringUtils;
+
 import java.sql.*;
 import java.util.ArrayList;
 
 public class RegistrarFunctions {
 	/**
+	 * Gets the next highest registration number
+	 */
+	private static String getNextRegNo() throws SQLException {
+		int i = 1;
+		String query = "SELECT MAX(StudentID) FROM Student;";
+		try(Connection con = SQLFunctions.connectToDatabase();
+			PreparedStatement pstmt = con.prepareStatement(query);
+			ResultSet rs = pstmt.executeQuery()) {
+
+		    rs.next();
+
+		    i = rs.getInt(1) + 1;
+		    if(rs.wasNull()) {
+		    	i = 1;
+			}
+		}
+
+		return String.format("%09d", i);
+	}
+
+	/**
+	 * get the next highest free username on the database
+	 * should hopefully never ever return a username that already exists
+	 */
+	private static String getNextUsername(String username) throws SQLException {
+		int usernameLength = username.length();
+		int highestSoFar = 0;
+	    String query = "SELECT SUBSTRING(Username, ?) FROM UserAccount WHERE Username LIKE ?;";
+
+	    try(Connection con = SQLFunctions.connectToDatabase();
+		    PreparedStatement pstmt = con.prepareStatement(query)) {
+
+	        pstmt.setInt(1, usernameLength + 1);
+	    	pstmt.setString(2, username + "%");
+
+	    	try(ResultSet rs = pstmt.executeQuery()) {
+
+	    		while(rs.next()) {
+	    			String number = rs.getString(1);
+	    			int parsed;
+
+	    			try {
+	    				parsed = Integer.parseInt(number);
+						highestSoFar = (parsed > highestSoFar) ? parsed : highestSoFar;
+					} catch (NumberFormatException e) {
+	    				// Just catches strings we can't parse so we can skip
+					}
+
+				}
+			}
+		}
+
+	    return username + (highestSoFar + 1);
+	}
+
+	/**
 	 * Function employed to add student a student to the Student table with given details. Also takes a degree and add registers them for that degree.
 	 * Will generate a unique Userid and Username.
 	 */
 	public static void addStudent(
-			String Title, String Forenames,
-			String Surname, String Tutor, String Degree, String StartDate
-	) {
-	    Connection con = null;
-	    PreparedStatement pstmt = null;
-	    String Username = null;
-	    String StudentID = null;
-		try {
-			con = SQLFunctions.connectToDatabase();
-			//Generation of a unique StudentID which is one higher than the previous maximum
-			pstmt = con.prepareStatement(
-					"SELECT MAX(StudentID) FROM Student");
-			ResultSet maxID = pstmt.executeQuery();
-			maxID.next();
-			if (maxID.getString(1) != null) {
-				StudentID = Integer.toString((Integer.parseInt(maxID.getString(1)) + 1));
-			} else {
-				StudentID = "000000001";}
-			//Generation of a unique username by checking for usernames of the same form and incrementing the end value by 1 in duplicate cases.
-			pstmt = con.prepareStatement(
-					"SELECT Forename,Surname FROM Student WHERE Surname = ?");
-			pstmt.setString(1, Surname);
-			ResultSet students = pstmt.executeQuery();
-			Username = Forenames.charAt(0) + Surname + 1; 
-			if (students != null) {
-				while (students.next()) {
-					if (students.getString(1).charAt(0) == Forenames.charAt(0)) {
-						pstmt = con.prepareStatement(
-								"SELECT MAX(UserAccount.Username) FROM UserAccount JOIN Student ON UserAccount.Username = Student.Username WHERE Student.Forename = ? AND Student.Surname = ?");
-						pstmt.setString(1, students.getString(1));
-						pstmt.setString(2, students.getString(2));
-						ResultSet nameFormat = pstmt.executeQuery();
-						nameFormat.next();
-						int value = 1+Character.getNumericValue(nameFormat.getString(1).charAt(nameFormat.getString(1).length()-1));
-						Username = Forenames.charAt(0) + Surname + value;
-						break;
-					}
-				}	
-			}
-			students.close();
-			//Creates the account in the account database with a random password
-			AdminFunctions.createAccount(Username, Student.generateRandomPassword(), 3);
-			//Adds the student into the student database
-			pstmt = con.prepareStatement(
-					"INSERT INTO Student VALUES (?, ?, ?, ?, ?, ?, ?)");
-			pstmt.setString(1, StudentID);
-			pstmt.setString(2, Title);
-			pstmt.setString(3, Forenames);
-			pstmt.setString(4, Surname);
-			pstmt.setString(5, Username + "@Sheffield.ac.uk");
-			pstmt.setString(6, Tutor);
-			pstmt.setString(7, Username);
-			pstmt.executeUpdate();
+			String title, String forenames, String surname, String tutor, String degree, String startDate
+	) throws SQLException {
+
+	    // if surname has any spaces, we'll just take the first string before a space
+		surname = surname.split("\\s+")[0];
+
+
+		// Username is first letter of first name capitalized then surname in title case
+		StringBuilder sb = new StringBuilder();
+		sb.append(forenames.toUpperCase().charAt(0));
+		sb.append(surname.toUpperCase().charAt(0));
+		sb.append(surname.toLowerCase().substring(1));
+
+		// get the next available username in usernameXX format
+	    String username = getNextUsername(sb.toString());
+
+
+	    // this kinda introduces a race condition because if another user calls this function between us getting this
+		// number and us putting it on the db then we'll have an issue but it's a primary key so we crash in that case
+	    String studentID = getNextRegNo();
+
+
+	    String userQuery = "INSERT INTO UserAccount(Username, Password, AccountType) VALUES(?, ?, 3);";
+	    String studentQuery = "INSERT INTO Student VALUES (?, ?, ?, ?, ?, ?, ?);";
+	    String modulesQuery = "INSERT INTO Grades(StudentPeriod, ModuleID)" +
+	    	"SELECT ?, ModuleID " +
+			"FROM DegreeModule " +
+			"WHERE DegreeLevel = ? AND isCore = 1;";
+
+	    String studentPeriodQuery = "INSERT INTO StudentPeriod VALUES (?, ?, ?, ?, ?);";
+
+	    try(Connection con = SQLFunctions.connectToDatabase();
+		 	PreparedStatement userPstmt = con.prepareStatement(userQuery);
+		 	PreparedStatement studentPstmt = con.prepareStatement(studentQuery);
+		 	PreparedStatement modulesPstmt = con.prepareStatement(modulesQuery);
+		 	PreparedStatement studentPeriodPstmt = con.prepareStatement(studentPeriodQuery)) {
+
+	        // Generate a password, in real life we might email this to the student or have the registrar
+			// show it to them at the registration event at this point but since it's out of scope we'll
+			// just print it to the console so we know what the password is
+	        char[] password = Student.generateRandomPassword();
+	        // emailToStudent(studentsPersonalEmail, password);
+
+			System.out.println("PASSWORD GIVEN TO STUDENT:");
+			System.out.println(new String(password));
+
+			// We want the whole transaction to either go through or fail we don't want students with no
+			// degreelevel or student accounts with no student information
+			con.setAutoCommit(false);
+
+			userPstmt.setString(1, username);
+			userPstmt.setString(2, Hasher.generateDigest(password));
+			userPstmt.executeUpdate();
+
+			studentPstmt.setString(1, studentID);
+			studentPstmt.setString(2, title);
+			studentPstmt.setString(3, forenames);
+			studentPstmt.setString(4, surname);
+			studentPstmt.setString(5, username.toLowerCase() + "@sheffield.ac.uk");
+			studentPstmt.setString(6, tutor);
+			studentPstmt.setString(7, username);
+			studentPstmt.executeUpdate();
+
 			//Gives the student a starting student study period with value A
-			registerStudent(("A"), ("1" + Degree), StudentID, StartDate);
-			//Assigns the user to all the core modules for their degree
-			pstmt = con.prepareStatement(
-					"SELECT * FROM DegreeModule WHERE DegreeLevel = ? AND isCore = 1");
-			pstmt.setString(1, ("1" + Degree));
-			ResultSet modules = pstmt.executeQuery();
-			while (modules.next()) {
-				addModule(modules.getString(1),("A"+StudentID));
-			}
-			modules.close();
+			studentPeriodPstmt.setString(1, 'A' + studentID);
+			studentPeriodPstmt.setString(2, "A");
+			studentPeriodPstmt.setString(3, '1' + degree);
+			studentPeriodPstmt.setString(4, studentID);
+			studentPeriodPstmt.setString(5, startDate);
+			studentPeriodPstmt.executeUpdate();
+
+			// Gives the student a grade for each module
+			modulesPstmt.setString(1, 'A' + studentID);
+			modulesPstmt.setString(2, '1' + degree);
+			modulesPstmt.executeUpdate();
+
+			con.commit();
 		}
 		catch (SQLException ex) {
-		    ex.printStackTrace();
-		}
-		finally {
-			SQLFunctions.closeAll(con, pstmt);
+			System.err.println("Couldn't create new student!");
+			throw ex;
 		}
 	}
 	

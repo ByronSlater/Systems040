@@ -19,7 +19,7 @@ public class GUI {
     public static final Dimension buttonSize = new Dimension(100, 24);
 
     // Converts a query and paramters to a JTable
-    public static TableModel queryToTable(String query, String... parameters) {
+    public static TableModel queryToTable(String query, String... parameters) throws SQLException {
         Vector<String> columnNames = new Vector<>();
         Vector<Vector<Object>> data = new Vector<>();
 
@@ -46,9 +46,6 @@ public class GUI {
                     data.add(row);
                 }
             }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
         }
 
         return new DefaultTableModel(data, columnNames);

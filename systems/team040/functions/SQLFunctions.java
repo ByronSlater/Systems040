@@ -12,9 +12,11 @@ package systems.team040.functions;
 import java.lang.AutoCloseable;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.function.Function;
 
 public class SQLFunctions {
 	public static Connection connectToDatabase() throws SQLException {
+		DriverManager.setLoginTimeout(10);
 		return DriverManager.getConnection(
 				"jdbc:mysql://stusql.dcs.shef.ac.uk/team040",
 				"team040", "c7a84239"
@@ -29,6 +31,7 @@ public class SQLFunctions {
 	    for(AutoCloseable c : closeables) {
 	    	try {
 	    		if(c != null) { c.close(); }
+
 	    	} catch (Exception e) {
 				System.out.println("Errored trying to close stuff, bad sign");
 	    		e.printStackTrace();
@@ -37,24 +40,26 @@ public class SQLFunctions {
 	}
 
 	/**
-	 * Should definitely not be called with unclean inputs, but we won't so it's okay
+	 * Takes a query to execute and a function to apply to the recordset (almost always
+	 * in the form rs -> rs.getString(1)) and creates a list of T
 	 */
-	public static ArrayList<Object> columnToList(String table, String column) {
-		String query = "SELECT " + column + " FROM " + table + ";";
-		ArrayList<Object> ret = new ArrayList<>();
-		try(Connection conn = connectToDatabase();
-		    PreparedStatement pstmt = conn.prepareStatement(query)) {
+	public static <T> ArrayList<T> queryToList(String query, CheckedFunction<ResultSet, T> func) throws SQLException {
+	    ArrayList<T> list = new ArrayList<>();
+	    try(Connection con = connectToDatabase();
+			Statement stmt = con.createStatement()) {
 
-			try(ResultSet rs = pstmt.executeQuery()) {
-				while(rs.next()) {
-					ret.add(rs.getObject(1));
+	    	ResultSet rs = stmt.executeQuery(query);
+	    	while(rs.next()) {
+	    	    try {
+					list.add(func.apply(rs));
+				} catch(SQLException e) {
+	    	    	// Something goes wrong we just skip the row
+					System.err.println("Error retrieving row");
+					System.err.println(e.getCause().getMessage());
 				}
 			}
-
-		} catch (SQLException e) {
-			e.printStackTrace();
 		}
 
-		return ret;
+	    return list;
 	}
 }

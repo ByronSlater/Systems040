@@ -1,19 +1,17 @@
-package systems.team040.gui;
+package systems.team040.gui.forms;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 
 /**
  * This view is the login page for the application
  */
-class LoginView extends MyPanel {
-   private JTextField username;
+public class LoginView extends MyPanel {
+   public JTextField username;
    private JPasswordField password;
    private JButton login;
 
-    LoginView() {
+    public LoginView() {
         super(false);
 
         username = new JTextField("username");
@@ -23,15 +21,15 @@ class LoginView extends MyPanel {
         username.setPreferredSize(new Dimension(200, 24));
         password.setPreferredSize(new Dimension(200, 24));
 
-        getCenterPanel().add(username);
-        getCenterPanel().add(password);
+        centerPanel.add(username);
+        centerPanel.add(password);
     }
 
-    String getEnteredUsername() {
+    public String getEnteredUsername() {
         return username.getText();
     }
 
-    char[] getEnteredPassword() {
+    public char[] getEnteredPassword() {
         return password.getPassword();
     }
 }
