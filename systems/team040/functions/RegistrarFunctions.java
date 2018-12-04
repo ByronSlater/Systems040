@@ -75,11 +75,40 @@ public class RegistrarFunctions {
 	}
 
 	/**
+	 * Tells us if a studentperiod is a resit
+	 */
+	public static boolean isRetake(Connection con, String studentPeriod) throws SQLException {
+		String query = "SELECT DegreeLevel, StudentID FROM StudentPeriod WHERE StudentPeriod = ?; ";
+		String degreeLevel, studentID;
+
+		try(PreparedStatement pstmt = con.prepareStatement(query)) {
+			pstmt.setString(1, studentPeriod);
+
+			try(ResultSet rs = pstmt.executeQuery()) {
+				rs.next();
+				degreeLevel = rs.getString("DegreeLevel");
+				studentID = rs.getString("studentID");
+			}
+
+		}
+		query = "SELECT COUNT(*) FROM StudentPeriod WHERE StudentID = ? AND DegreeLevel = ?; ";
+		try(PreparedStatement pstmt = con.prepareStatement(query)) {
+			pstmt.setString(1, studentID);
+			pstmt.setString(2, degreeLevel);
+
+			try(ResultSet rs = pstmt.executeQuery()) {
+				rs.next();
+				return rs.getInt(1) > 1;
+			}
+		}
+	}
+
+	/**
 	 * Function employed to add student a student to the Student table with given details. Also takes a degree and add registers them for that degree.
 	 * Will generate a unique Userid and Username.
 	 */
 	public static void addStudent(
-			String title, String forenames, String surname, String tutor, String degree, String startDate
+			String title, String forenames, String surname, String tutor, String degree, String startDate, char[] password
 	) throws SQLException {
 
 	    // if surname has any spaces, we'll just take the first string before a space
@@ -116,12 +145,7 @@ public class RegistrarFunctions {
 		 	PreparedStatement modulesPstmt = con.prepareStatement(modulesQuery);
 		 	PreparedStatement studentPeriodPstmt = con.prepareStatement(studentPeriodQuery)) {
 
-	        // Generate a password, in real life we might email this to the student or have the registrar
-			// show it to them at the registration event at this point but since it's out of scope we'll
-			// just print it to the console so we know what the password is
-	        char[] password = Student.generateRandomPassword();
 	        // emailToStudent(studentsPersonalEmail, password);
-
 			System.out.println("PASSWORD GIVEN TO STUDENT:");
 			System.out.println(new String(password));
 

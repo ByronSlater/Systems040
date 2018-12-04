@@ -214,7 +214,7 @@ public class AppController {
 
         try {
             ArrayList<String> usernames = SQLFunctions.queryToList(
-                    "SELECT Username FROM UserAccount",
+                    "SELECT Username FROM UserAccount ORDER BY Username; ",
                     rs -> rs.getString(1)
             );
             view.addComboBox("Username", "username", usernames);
@@ -302,7 +302,7 @@ public class AppController {
 
         try {
             ArrayList<String> moduleIDs = SQLFunctions.queryToList(
-                    "SELECT ModuleID FROM Module;",
+                    "SELECT ModuleID FROM Module ORDER BY ModuleID;",
                     rs -> rs.getString("ModuleID")
             );
 
@@ -346,7 +346,7 @@ public class AppController {
 
         ArrayList<String> departments = null;
         try {
-            departments = SQLFunctions.queryToList("SELECT Dept FROM Department;", rs -> rs.getString(1));
+            departments = SQLFunctions.queryToList("SELECT Dept FROM Department ORDER BY Dept;", rs -> rs.getString(1));
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(
                     null, "Something went wrong"
@@ -395,7 +395,7 @@ public class AppController {
             }
 
             try {
-                AdminFunctions.addDegree(degreeCode, name, dlen, hasPlacement);
+                AdminFunctions.addDegree(degreeCode, name, dlen, hasPlacement, dept);
                 changeView(viewDegrees());
             } catch (SQLException e1) {
                 e1.printStackTrace();
@@ -415,7 +415,7 @@ public class AppController {
         try {
             ArrayList<String> degreeCodes =
                     SQLFunctions.queryToList(
-                            "SELECT DegreeCode FROM Degree;",
+                            "SELECT DegreeCode FROM Degree ORDER BY DegreeCode;",
                             rs -> rs.getString(1)
                     );
 
@@ -496,7 +496,7 @@ public class AppController {
 
         try {
             ArrayList<String> departments = SQLFunctions.queryToList(
-                    "SELECT Dept FROM Department;",
+                    "SELECT Dept FROM Department ORDER BY Dept;",
                     rs -> rs.getString(1)
             );
 
@@ -529,7 +529,7 @@ public class AppController {
         view.getBackButton().addActionListener(e -> changeView(createAdminSwitchboard()));
 
         try {
-            String query = "SELECT DegreeLevel FROM DegreeLevel;";
+            String query = "SELECT DegreeLevel FROM DegreeLevel ORDER BY SUBSTRING(2, DegreeLevel);";
             ArrayList<String> degrees = SQLFunctions.queryToList(query, rs -> rs.getString("DegreeLevel"));
             view.addComboBox("Degree", "degree", degrees);
         } catch (SQLException e) {
@@ -618,7 +618,7 @@ public class AppController {
 
         try {
             ArrayList<String> studentIDs = SQLFunctions.queryToList(
-                    "SELECT StudentID FROM Student;", rs -> rs.getString("StudentID")
+                    "SELECT StudentID FROM Student ORDER BY StudentID;", rs -> rs.getString("StudentID")
             );
             view.addComboBox("Student ID", "studentid", studentIDs);
         } catch (SQLException e) {
@@ -661,10 +661,14 @@ public class AppController {
                     try(PreparedStatement pstmt = con.prepareStatement(query)) {
                         for(int i = 0; i < rows; ++i) {
                             String moduleID = (String) model.getValueAt(i, 0);
-                            String studentPeriod = (String) model.getValueAt(i, 1);
+                            String studentPeriod = (String) model.getValueAt(i, 3);
+                            Object grade = null, resit;
 
-                            Object grade = model.getValueAt(i, 2);
-                            Object resit = model.getValueAt(i, 3);
+                            if(!view.IS_RESIT) {
+                                grade = model.getValueAt(i, view.GRADE_COLUMN);
+
+                            }
+                            resit = model.getValueAt(i, view.RESIT_COLUMN);
 
                             if(grade == null) {
                                 pstmt.setNull(1, Types.INTEGER);
@@ -692,6 +696,8 @@ public class AppController {
 
                             pstmt.setString(3, moduleID);
                             pstmt.setString(4, studentPeriod);
+
+                            System.out.println(pstmt);
 
                             System.out.println(pstmt.toString());
                             pstmt.executeUpdate();
@@ -750,6 +756,14 @@ public class AppController {
                                     "Student failed and is resitting"
                             );
                             changeView(createTeacherView());
+                            return;
+                        case NotEnoughCredits:
+                            JOptionPane.showMessageDialog(
+                                    null,
+                                    "Student is not signed up for correct number of credits, please remedy"
+                            );
+                            changeView(createTeacherView());
+                            return;
                     }
                 } catch (SQLException e1) {
                     e1.printStackTrace();
@@ -834,7 +848,7 @@ public class AppController {
     }
 
     private MyPanel addStudent() {
-        InputPanel view = new AddStudentView();
+        AddStudentView view = new AddStudentView();
         if(LoggedInUser.getInstance().getAccountType().equals(AccountType.Registrar)) {
             view.getBackButton().addActionListener(evt -> changeView(registrarHome()));
         } else if (LoggedInUser.getInstance().getAccountType().equals(AccountType.Admin)) {
@@ -848,10 +862,15 @@ public class AppController {
                         view.getString("surname"),
                         view.getString("tutor"),
                         view.getString("degree"),
-                        view.getString("startdate")
+                        view.getString("startdate"),
+                        view.getPassword().length == 0 ? Student.generateRandomPassword() : view.getPassword()
                 );
 
-                changeView(registrarHome());
+                if(LoggedInUser.getInstance().getAccountType().equals(Admin)) {
+                    changeView(createAdminSwitchboard());
+                } else {
+                    changeView(registrarHome());
+                }
             } catch (SQLException e) {
                 e.printStackTrace();
                 System.out.println("Error: User not created");
@@ -866,7 +885,7 @@ public class AppController {
 
         try {
             ArrayList<String> usernames = SQLFunctions.queryToList(
-                    "SELECT Username FROM Student;",
+                    "SELECT Username FROM Student ORDER BY Username;",
                     rs -> rs.getString(1)
             );
 

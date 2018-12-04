@@ -160,7 +160,7 @@ public class TeacherFunctions {
 	}
 
 	public enum ProgressReturn {
-		Failed, Progressed, NotGraded;
+		Failed, Progressed, NotGraded, NotEnoughCredits;
 	}
 
 	/**
@@ -174,11 +174,13 @@ public class TeacherFunctions {
 	public static ProgressReturn progressToNextPeriod(String studentPeriod) throws SQLException {
 		char currentPeriodID, nextPeriodID;
 		String degreeCode, degreeLevel;
+		int creditsBeingTaken;
+		int currentYearTaken;
 		String query;
 		String currentDate, nextDate;
 		String studentID;
 		String nextDegreeLevel;
-		int level;
+		char level;
 
 
 		try(Connection con = SQLFunctions.connectToDatabase()) {
@@ -186,8 +188,10 @@ public class TeacherFunctions {
 
 		    // First we'll check if there are any modules they haven't received a grade for and quit out
 			query = "" +
-					"SELECT COUNT(*) " +
+					"SELECT COUNT(*)" +
 					"  FROM Grades " +
+					"  JOIN Module" +
+					"    ON Grades.ModuleID = Module.ModuleID " +
 					" WHERE StudentPeriod = ? " +
 					"       AND Grade IS NULL " +
 					"       AND Resit IS NULL; ";
@@ -199,6 +203,22 @@ public class TeacherFunctions {
 					if(rs.getInt(1) > 0) {
 						return ProgressReturn.NotGraded;
 					}
+				}
+			}
+
+			// Next we'll get the total credits this person is taking
+			query = "" +
+					"SELECT SUM(Credits)" +
+					"  FROM Grades" +
+					"  JOIN Module" +
+					"       ON Module.ModuleID = Grades.ModuleID " +
+					" WHERE Grades.StudentPeriod = ?; ";
+
+			try(PreparedStatement pstmt = con.prepareStatement(query)) {
+				pstmt.setString(1, studentPeriod);
+				try(ResultSet rs = pstmt.executeQuery()) {
+					rs.next();
+					creditsBeingTaken = rs.getInt(1);
 				}
 			}
 
@@ -216,13 +236,18 @@ public class TeacherFunctions {
 				try (ResultSet rs = pstmt.executeQuery()) {
 					rs.next();
 
-					level = rs.getInt("Level");
+					level = rs.getString("Level").charAt(0);
 					currentPeriodID = rs.getString("PeriodID").charAt(0);
 					nextPeriodID = (char) (currentPeriodID + 1);
 					currentDate = rs.getString("StartDate");
 					degreeCode = rs.getString("DegreeCode");
 					studentID = rs.getString("StudentID");
 					degreeLevel = rs.getString("DegreeLevel");
+					currentYearTaken = rs.getInt("YearTaken");
+
+					if(level == '4' && creditsBeingTaken != 180 || creditsBeingTaken != 120) {
+						return ProgressReturn.NotEnoughCredits;
+					}
 				}
 			}
 
@@ -242,11 +267,12 @@ public class TeacherFunctions {
 			if(calculateIfPassed(con, studentPeriod)) {
 
 				// get the next degreeLevel
-				query = "SELECT DegreeLevel FROM DegreeLevel WHERE Level > ? AND DegreeCode = ?";
+				query = "SELECT DegreeLevel FROM DegreeLevel WHERE YearTaken = ? AND DegreeCode = ?";
 				try(PreparedStatement pstmt = con.prepareStatement(query)) {
-					pstmt.setInt(1, level);
+					pstmt.setInt(1, currentYearTaken + 1);
 					pstmt.setString(2, degreeCode);
 
+					System.out.println(pstmt);
 					try(ResultSet rs = pstmt.executeQuery()) {
 					    // assume we have already checked that this is not the last level of the degree
 						rs.next();
@@ -286,7 +312,6 @@ public class TeacherFunctions {
 
 			} else {
 				// we didn't pass so we add a new studentperiod at the same level and carry forward grades
-
 				// create new studentPeriod at same level
 				query = "" +
 						"INSERT INTO StudentPeriod(StudentPeriod, PeriodID, DegreeLevel, StudentID, StartDate)" +

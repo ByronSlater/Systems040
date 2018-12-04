@@ -80,7 +80,8 @@ public class ModuleRegisterView extends MyPanel {
                     "    ON DegreeModule.ModuleID = Grades.ModuleID " +
                     " WHERE Grades.StudentPeriod = ? " +
                     "       AND DegreeLevel = ? " +
-                    "       AND isCore = 0;";
+                    "       AND isCore = 0 " +
+                    " ORDER BY Grades.ModuleID;";
 
             ArrayList<String> alreadyTakenModules = SQLFunctions.queryToList(
                     con, query,

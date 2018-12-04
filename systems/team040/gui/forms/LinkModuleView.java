@@ -22,10 +22,17 @@ public class LinkModuleView extends MyPanel {
 
 
         try {
-            String query = "SELECT ModuleID, isCore FROM DegreeModule WHERE DegreeLevel = ?;";
+            String query = "" +
+                    "SELECT Module.ModuleID" +
+                    "     , isCore " +
+                    "     , Credits " +
+                    "  FROM DegreeModule " +
+                    "  JOIN Module " +
+                    "    ON Module.ModuleID = DegreeModule.ModuleID " +
+                    " WHERE DegreeLevel = ?;";
             centerPanel.add(new JScrollPane(new JTable(GUI.queryToTable(query, s -> s.setString(1, degreeLevel)))));
 
-            query = "SELECT ModuleID FROM Module;";
+            query = "SELECT ModuleID FROM Module ORDER BY ModuleID;";
             ArrayList<String> modules = SQLFunctions.queryToList(query, rs -> rs.getString("ModuleID"));
 
             moduleSelector = new JComboBox<>();

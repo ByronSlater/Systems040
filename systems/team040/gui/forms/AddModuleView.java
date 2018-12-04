@@ -16,10 +16,10 @@ public class AddModuleView extends InputPanel {
 
         try {
             departments = SQLFunctions.queryToList(
-                    "SELECT Dept FROM Department;", rs -> rs.getString(1)
+                    "SELECT Dept FROM Department ORDER BY Dept;", rs -> rs.getString(1)
             );
             timePeriods = SQLFunctions.queryToList(
-                    "SELECT TimePeriod from TimePeriods;", rs -> rs.getString(1)
+                    "SELECT TimePeriod from TimePeriods ORDER BY TimePeriod;", rs -> rs.getString(1)
             );
 
             addComboBox("Department", "dept", departments);
