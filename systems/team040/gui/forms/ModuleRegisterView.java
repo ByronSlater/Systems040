@@ -1,6 +1,7 @@
 package systems.team040.gui.forms;
 
 import systems.team040.functions.SQLFunctions;
+import systems.team040.functions.TeacherFunctions;
 import systems.team040.gui.GUI;
 
 import javax.swing.*;
@@ -36,14 +37,70 @@ public class ModuleRegisterView extends MyPanel {
                 }
             }
 
+            int level = TeacherFunctions.getLevel(con, latestStudentPeriod);
+            int creditsNeeded = level == 4 ? 180 : 120;
+            int creditsTaken;
+
             query = "" +
-                    "SELECT ModuleID " +
+                    "SELECT SUM(Credits) " +
+                    "  FROM Grades" +
+                    "  JOIN Module " +
+                    "    ON Module.ModuleID = Grades.ModuleID " +
+                    " WHERE Grades.StudentPeriod = ?; ";
+            try(PreparedStatement pstmt = con.prepareStatement(query)) {
+
+                pstmt.setString(1, latestStudentPeriod);
+
+                try(ResultSet rs = pstmt.executeQuery()) {
+                    rs.next();
+                    creditsTaken = rs.getInt(1);
+                }
+            }
+
+            query = "" +
+                    "SELECT Module.ModuleID " +
                     "  FROM DegreeModule " +
+                    "  JOIN Module" +
+                    "    ON DegreeModule.ModuleID = Module.ModuleID " +
                     " WHERE DegreeLevel = ?" +
-                    "       AND isCore = 0;";
+                    "       AND isCore = 0" +
+                    "       AND Credits <= ?; ";
+
             ArrayList<String> availModules = SQLFunctions.queryToList(
-                    con, query, rs -> rs.getString(1), s -> s.setString(1, degreeLevel)
+                    con, query,
+                    rs -> rs.getString(1),
+                    s -> s.setString(1, degreeLevel),
+                    s -> s.setInt(2, creditsNeeded - creditsTaken)
             );
+
+            query = "" +
+                    "SELECT Grades.ModuleID " +
+                    "  FROM Grades " +
+                    "  JOIN DegreeModule " +
+                    "    ON DegreeModule.ModuleID = Grades.ModuleID " +
+                    " WHERE Grades.StudentPeriod = ? " +
+                    "       AND DegreeLevel = ? " +
+                    "       AND isCore = 0;";
+
+            ArrayList<String> alreadyTakenModules = SQLFunctions.queryToList(
+                    con, query,
+                    rs -> rs.getString(1),
+                    s -> s.setString(1, latestStudentPeriod),
+                    s -> s.setString(2, degreeLevel)
+            );
+
+            ArrayList<String> moduleDropDown = new ArrayList<>();
+            moduleDropDown.addAll(availModules);
+            moduleDropDown.addAll(alreadyTakenModules);
+
+            moduleSelector = new JComboBox<>();
+
+            for (String availModule : moduleDropDown) {
+                moduleSelector.addItem(availModule);
+            }
+
+            centerPanel.add(moduleSelector, BorderLayout.PAGE_END);
+
 
             query = "" +
                     "SELECT Module.* " +
@@ -56,13 +113,6 @@ public class ModuleRegisterView extends MyPanel {
                     new JTable(GUI.queryToTable(query, s -> s.setString(1, latestStudentPeriod)))
             ), BorderLayout.CENTER);
 
-            moduleSelector = new JComboBox<>();
-
-            for (String availModule : availModules) {
-                moduleSelector.addItem(availModule);
-            }
-
-            centerPanel.add(moduleSelector, BorderLayout.PAGE_END);
 
 
         } catch (SQLException e) {

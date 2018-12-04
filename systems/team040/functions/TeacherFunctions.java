@@ -74,7 +74,7 @@ public class TeacherFunctions {
 		return weightedMean;
 	}
 
-	static int getLevel(Connection con, String studentPeriod) throws SQLException {
+	public static int getLevel(Connection con, String studentPeriod) throws SQLException {
 		int level;
 
 		String query = "" +
