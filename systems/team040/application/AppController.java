@@ -11,6 +11,7 @@ import javax.swing.text.JTextComponent;
 import java.awt.*;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.function.Supplier;
 
 import static systems.team040.functions.AccountType.Admin;
@@ -621,10 +622,38 @@ public class AppController {
         view.getBackButton().addActionListener(e -> changeView(linkModules()));
 
         view.addButton("Add Module").addActionListener(e -> {
-            boolean isCore = JOptionPane.showConfirmDialog(
-                    null,
-                    "Should this be a core module?"
-            ) == JOptionPane.YES_OPTION;
+            String q = "SELECT Credits FROM Module WHERE ModuleID = ?; ";
+            int credits = 180;
+
+            try(Connection con = SQLFunctions.connectToDatabase();
+                PreparedStatement pstmt = con.prepareStatement(q)) {
+
+                pstmt.setString(1, view.getSelectedModule());
+                try(ResultSet rs = pstmt.executeQuery()) {
+                    rs.next();
+                    credits = rs.getInt(1);
+                }
+
+            } catch (SQLException e1) {
+                e1.printStackTrace();
+            }
+
+            boolean isCore;
+
+            if(credits > view.creditsAvailable) {
+                JOptionPane.showMessageDialog(
+                        null,
+                        "Too many core credits, adding as optional module"
+                );
+
+                isCore = false;
+            } else {
+                isCore = JOptionPane.showConfirmDialog(
+                        null,
+                        "Should this be a core module?"
+                ) == JOptionPane.YES_OPTION;
+            }
+
             String query = "INSERT INTO DegreeModule VALUES (?, ?, ?);";
 
             try(Connection con = SQLFunctions.connectToDatabase();
@@ -927,6 +956,7 @@ public class AppController {
         }
         view.addButton("Add").addActionListener(evt -> {
             try {
+                char[] pw = view.getPassword().length == 0 ? Student.generateRandomPassword() : view.getPassword();
                 RegistrarFunctions.addStudent(
                         view.getString("title"),
                         view.getString("forename"),
@@ -934,8 +964,10 @@ public class AppController {
                         view.getString("tutor"),
                         view.getString("degree"),
                         view.getString("startdate"),
-                        view.getPassword().length == 0 ? Student.generateRandomPassword() : view.getPassword()
+                        pw
                 );
+
+                JOptionPane.showMessageDialog(null, "PASSWORD GIVEN IS \"" + new String(pw) + "\"");
 
                 if(LoggedInUser.getInstance().getAccountType().equals(Admin)) {
                     changeView(createAdminSwitchboard());

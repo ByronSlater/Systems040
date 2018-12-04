@@ -29,24 +29,7 @@ public class AdminFunctions {
             pstmt.executeUpdate();
 		}
 	}
-	
-	/**
-	 * Function employed to update user passwords. The given password is put into the accounts database in hashed form.
-	 * @
-	 */
-	public static void changePassword(String username, char[] newPass) throws SQLException {
-	    String query = "UPDATE UserAccount SET password = ? WHERE username = ?;";
-	    String digest = Hasher.generateDigest(newPass);
 
-		try(Connection con = SQLFunctions.connectToDatabase();
-		    PreparedStatement pstmt = con.prepareStatement(query)) {
-
-			pstmt.setString(1, digest);
-			pstmt.setString(2, username);
-			pstmt.executeUpdate();
-		}
-	}
-	
 	/**
 	 * Function employed to remove a user account from the user account table given the username.
 	 * @

@@ -7,10 +7,7 @@ package systems.team040.functions;
  */
 
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.ArrayList;
 
 /**
@@ -105,8 +102,10 @@ public class RegistrarFunctions {
     /**
      * Function employed to add student a student to the Student table with given details. Also takes a degree and add registers them for that degree.
      * Will generate a unique Userid and Username.
+     *
+     * returns the password given to the student
      */
-    public static void addStudent(
+    public static char[] addStudent(
             String title, String forenames, String surname, String tutor, String degree, String startDate, char[] password
     ) throws SQLException {
 
@@ -184,6 +183,8 @@ public class RegistrarFunctions {
             System.err.println("Couldn't create new student!");
             throw ex;
         }
+
+        return password;
     }
 
     /**
