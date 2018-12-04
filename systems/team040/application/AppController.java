@@ -2,6 +2,7 @@ package systems.team040.application;
 
 import jdk.internal.util.xml.impl.Input;
 import jdk.nashorn.internal.scripts.JO;
+import sun.rmi.runtime.Log;
 import systems.team040.functions.*;
 import systems.team040.gui.GUI;
 import systems.team040.gui.components.MyTextField;
@@ -14,6 +15,9 @@ import java.awt.*;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.function.Supplier;
+
+import static systems.team040.functions.AccountType.Admin;
+import static systems.team040.functions.AccountType.Teacher;
 
 public class AppController {
     private JFrame frame;
@@ -38,6 +42,9 @@ public class AppController {
         });
     }
 
+    /**
+     * Clears the frame and puts the new jpanel on it
+     */
     private void changeView(JPanel newPanel) {
         contentPane.removeAll();
         contentPane.add(newPanel);
@@ -69,26 +76,6 @@ public class AppController {
      * delegates to actual login function if not used
      */
     private JPanel tryLogin(String username, char[] password) {
-        switch(username.toLowerCase()) {
-            case "admin":
-                return createAdminSwitchboard();
-            case "student":
-                return viewStudent(null);
-            case "teacher":
-                return createTeacherView();
-            case "registrar":
-                return registrarHome();
-            default:
-                return tryProperLogin(username, password);
-        }
-    }
-
-    /**
-     * checks the given password against what we pull off the database,
-     * returns null if there is no match or returns the homepage
-     * of the given user if a match is found
-     */
-    private JPanel tryProperLogin(String username, char[] password) {
         String query = "SELECT Password, AccountType FROM UserAccount WHERE Username = ?;";
 
         try(Connection con = SQLFunctions.connectToDatabase();
@@ -160,6 +147,7 @@ public class AppController {
     private JPanel createAdminSwitchboard() {
         return createGenericSwitchboard(
                 new Pair<>("View/Edit users", this::viewUsers),
+                new Pair<>("Add Student", this::addStudent),
                 new Pair<>("View/Edit modules", this::viewModules),
                 new Pair<>("View/Edit degrees", this::viewDegrees),
                 new Pair<>("View/Edit departments", this::viewDepartments),
@@ -188,6 +176,16 @@ public class AppController {
         view.addButton("Add").addActionListener(e -> {
             if(!view.isOkay()) {
                 displayErrors(view);
+                return;
+            }
+
+            if(view.getAccountType() == 3) {
+                JOptionPane.showMessageDialog(
+                        null,
+                        "Sorry, can't create students from this page, please use " +
+                                "create students page"
+                );
+
                 return;
             }
 
@@ -614,133 +612,138 @@ public class AppController {
     private MyPanel gradeStudent(String studentID) {
         GradeStudentView view = new GradeStudentView(studentID);
 
-        view.getBackButton().addActionListener(e -> changeView(createTeacherView()));
-        view.addButton("Grade Student").addActionListener(e -> {
-            DefaultTableModel model = view.getModel();
 
-            try(Connection con = SQLFunctions.connectToDatabase()) {
-                con.setAutoCommit(false);
-                String query = "" +
-                        "UPDATE Grades " +
-                        "   SET Grade = ? " +
-                        "     , Resit = ? " +
-                        " WHERE ModuleID = ? " +
-                        "       AND StudentPeriod = ?;";
+        if(LoggedInUser.getInstance().getAccountType().equals(AccountType.Teacher)) {
+            view.getBackButton().addActionListener(e -> changeView(createTeacherView()));
+            view.addButton("Grade Student").addActionListener(e -> {
+                DefaultTableModel model = view.getModel();
 
-                int rows = model.getRowCount();
+                try(Connection con = SQLFunctions.connectToDatabase()) {
+                    con.setAutoCommit(false);
+                    String query = "" +
+                            "UPDATE Grades " +
+                            "   SET Grade = ? " +
+                            "     , Resit = ? " +
+                            " WHERE ModuleID = ? " +
+                            "       AND StudentPeriod = ?;";
+
+                    int rows = model.getRowCount();
 
 
-                try(PreparedStatement pstmt = con.prepareStatement(query)) {
-                    for(int i = 0; i < rows; ++i) {
-                        String moduleID = (String) model.getValueAt(i, 0);
-                        String studentPeriod = (String) model.getValueAt(i, 1);
+                    try(PreparedStatement pstmt = con.prepareStatement(query)) {
+                        for(int i = 0; i < rows; ++i) {
+                            String moduleID = (String) model.getValueAt(i, 0);
+                            String studentPeriod = (String) model.getValueAt(i, 1);
 
-                        Object grade = model.getValueAt(i, 2);
-                        Object resit = model.getValueAt(i, 3);
+                            Object grade = model.getValueAt(i, 2);
+                            Object resit = model.getValueAt(i, 3);
 
-                        if(grade == null) {
-                            pstmt.setNull(1, Types.INTEGER);
-                        } else if(grade instanceof String) {
-                            if(((String) grade).isEmpty()) {
+                            if(grade == null) {
                                 pstmt.setNull(1, Types.INTEGER);
-                            } else {
-                                pstmt.setInt(1, Integer.parseInt((String) grade));
+                            } else if(grade instanceof String) {
+                                if(((String) grade).isEmpty()) {
+                                    pstmt.setNull(1, Types.INTEGER);
+                                } else {
+                                    pstmt.setInt(1, Integer.parseInt((String) grade));
+                                }
+                            } else if(grade instanceof Integer) {
+                                pstmt.setInt(1, (int) grade);
                             }
-                        } else if(grade instanceof Integer) {
-                            pstmt.setInt(1, (int) grade);
-                        }
 
-                        if(resit == null) {
-                            pstmt.setNull(2, Types.INTEGER);
-                        } else if(resit instanceof String){
-                            if(((String) resit).isEmpty()) {
+                            if(resit == null) {
                                 pstmt.setNull(2, Types.INTEGER);
-                            } else {
-                                pstmt.setInt(2, Integer.parseInt((String) resit));
+                            } else if(resit instanceof String){
+                                if(((String) resit).isEmpty()) {
+                                    pstmt.setNull(2, Types.INTEGER);
+                                } else {
+                                    pstmt.setInt(2, Integer.parseInt((String) resit));
+                                }
+                            } else if(resit instanceof Integer) {
+                                pstmt.setInt(2, (int) resit);
                             }
-                        } else if(resit instanceof Integer) {
-                            pstmt.setInt(2, (int) resit);
+
+                            pstmt.setString(3, moduleID);
+                            pstmt.setString(4, studentPeriod);
+
+                            System.out.println(pstmt.toString());
+                            pstmt.executeUpdate();
                         }
-
-                        pstmt.setString(3, moduleID);
-                        pstmt.setString(4, studentPeriod);
-
-                        System.out.println(pstmt.toString());
-                        pstmt.executeUpdate();
                     }
+
+                    con.commit();
+                    JOptionPane.showMessageDialog(
+                            null,
+                            "Graded student!"
+                    );
+                    changeView(gradeStudent(studentID));
+                } catch (SQLException e1) {
+                    e1.printStackTrace();
+                    JOptionPane.showMessageDialog(
+                            null,
+                            "Something went wrong"
+                    );
                 }
 
-                con.commit();
-                JOptionPane.showMessageDialog(
-                        null,
-                        "Graded student!"
-                );
-                changeView(gradeStudent(studentID));
-            } catch (SQLException e1) {
-                e1.printStackTrace();
-                JOptionPane.showMessageDialog(
-                        null,
-                        "Something went wrong"
-                );
-            }
+            });
+            view.addButton("Progress Student").addActionListener(e -> {
+                // first we find out what the students latest study period is
+                String query = "SELECT MAX(StudentPeriod) FROM StudentPeriod WHERE StudentID = ?;";
+                String studentPeriod;
 
-        });
+                try(Connection con = SQLFunctions.connectToDatabase();
+                    PreparedStatement pstmt = con.prepareStatement(query)) {
 
-        view.addButton("Progress Student").addActionListener(e -> {
-            // first we find out what the students latest study period is
-            String query = "SELECT MAX(StudentPeriod) FROM StudentPeriod WHERE StudentID = ?;";
-            String studentPeriod;
+                    pstmt.setString(1, studentID);
+                    try(ResultSet rs = pstmt.executeQuery()) {
+                        rs.next();
+                        studentPeriod = rs.getString(1);
+                    }
 
-            try(Connection con = SQLFunctions.connectToDatabase();
-                PreparedStatement pstmt = con.prepareStatement(query)) {
 
-                pstmt.setString(1, studentID);
-                try(ResultSet rs = pstmt.executeQuery()) {
-                    rs.next();
-                    studentPeriod = rs.getString(1);
+                    TeacherFunctions.ProgressReturn ret = TeacherFunctions.progressToNextPeriod(studentPeriod);
+
+                    switch (ret) {
+                        case NotGraded:
+                            JOptionPane.showMessageDialog(
+                                    null,
+                                    "Student still has ungraded modules, please fix"
+                            );
+                            return;
+                        case Progressed:
+                            JOptionPane.showMessageDialog(
+                                    null,
+                                    "Student has progressed!"
+                            );
+                            changeView(createTeacherView());
+                            return;
+                        case Failed:
+                            JOptionPane.showMessageDialog(
+                                    null,
+                                    "Student failed and is resitting"
+                            );
+                            changeView(createTeacherView());
+                    }
+                } catch (SQLException e1) {
+                    e1.printStackTrace();
+                    JOptionPane.showMessageDialog(
+                            null,
+                            "Something went wrong"
+                    );
                 }
 
-
-                TeacherFunctions.ProgressReturn ret = TeacherFunctions.progressToNextPeriod(studentPeriod);
-
-                switch (ret) {
-                    case NotGraded:
-                        JOptionPane.showMessageDialog(
-                                null,
-                                "Student still has ungraded modules, please fix"
-                        );
-                        return;
-                    case Progressed:
-                        JOptionPane.showMessageDialog(
-                                null,
-                                "Student has progressed!"
-                        );
-                        changeView(createTeacherView());
-                        return;
-                    case Failed:
-                        JOptionPane.showMessageDialog(
-                                null,
-                                "Student failed and is resitting"
-                        );
-                        changeView(createTeacherView());
-                }
-            } catch (SQLException e1) {
-                e1.printStackTrace();
-                JOptionPane.showMessageDialog(
-                        null,
-                        "Something went wrong"
-                );
-            }
-
-        });
-
-        view.addButton("Register for Optionals").addActionListener(e -> changeView(moduleRegisterer(studentID)));
+            });
+        } else if(LoggedInUser.getInstance().getAccountType().equals(AccountType.Registrar)) {
+            view.addButton("Register for Optionals").addActionListener(e -> changeView(moduleRegisterer(studentID)));
+            view.getBackButton().addActionListener(e -> changeView(registrarHome()));
+        }
 
         return view;
     }
 
     private JPanel moduleRegisterer(String studentID) {
         ModuleRegisterView view = new ModuleRegisterView(studentID);
+
+        view.getBackButton().addActionListener(e -> changeView(registrarHome()));
 
         view.addButton("Register").addActionListener(e -> {
             String moduleID = view.getSelectedModule();
@@ -802,7 +805,11 @@ public class AppController {
 
     private MyPanel addStudent() {
         InputPanel view = new AddStudentView();
-        view.getBackButton().addActionListener(evt -> changeView(registrarHome()));
+        if(LoggedInUser.getInstance().getAccountType().equals(AccountType.Registrar)) {
+            view.getBackButton().addActionListener(evt -> changeView(registrarHome()));
+        } else if (LoggedInUser.getInstance().getAccountType().equals(AccountType.Admin)) {
+            view.getBackButton().addActionListener(evt -> changeView(createAdminSwitchboard()));
+        }
         view.addButton("Add").addActionListener(evt -> {
             try {
                 RegistrarFunctions.addStudent(
