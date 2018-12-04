@@ -43,23 +43,42 @@ public class SQLFunctions {
 	 * Takes a query to execute and a function to apply to the recordset (almost always
 	 * in the form rs -> rs.getString(1)) and creates a list of T
 	 */
-	public static <T> ArrayList<T> queryToList(String query, CheckedFunction<ResultSet, T> func) throws SQLException {
+	@SafeVarargs
+	public static <T> ArrayList<T> queryToList(
+			Connection con, String query, CheckedFunction<ResultSet, T, SQLException> func,
+			CheckedConsumer<PreparedStatement, SQLException>... params
+	) throws SQLException {
 	    ArrayList<T> list = new ArrayList<>();
-	    try(Connection con = connectToDatabase();
-			Statement stmt = con.createStatement()) {
+	    try(PreparedStatement stmt = con.prepareStatement(query)) {
 
-	    	ResultSet rs = stmt.executeQuery(query);
-	    	while(rs.next()) {
-	    	    try {
-					list.add(func.apply(rs));
-				} catch(SQLException e) {
-	    	    	// Something goes wrong we just skip the row
-					System.err.println("Error retrieving row");
-					System.err.println(e.getCause().getMessage());
+			for (CheckedConsumer<PreparedStatement, SQLException> param : params) {
+				param.accept(stmt);
+			}
+
+			try(ResultSet rs = stmt.executeQuery()) {
+				while(rs.next()) {
+					try {
+						list.add(func.apply(rs));
+					} catch(SQLException e) {
+						// Something goes wrong we just skip the row
+						System.err.println("Error retrieving row");
+						System.err.println(e.getMessage());
+					}
 				}
 			}
 		}
 
 	    return list;
+	}
+
+	@SafeVarargs
+	public static <T> ArrayList<T> queryToList(
+			String query, CheckedFunction<ResultSet, T, SQLException> func,
+			CheckedConsumer<PreparedStatement, SQLException>... params
+	) throws SQLException {
+
+		try(Connection con = SQLFunctions.connectToDatabase()) {
+			return queryToList(con, query, func, params);
+		}
 	}
 }

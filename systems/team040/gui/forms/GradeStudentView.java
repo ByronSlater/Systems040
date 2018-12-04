@@ -1,46 +1,54 @@
 package systems.team040.gui.forms;
 
+import systems.team040.functions.SQLFunctions;
 import systems.team040.gui.GUI;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.sql.SQLException;
 
-public class GradeStudentView extends JPanel {
-    private JTable studentInfoTable;
-    private JButton backButton;
-    private JButton gradeButton;
+public class GradeStudentView extends MyPanel {
+    private DefaultTableModel model;
+    private JTable table;
+    private String studentID;
+    String query;
 
-    GradeStudentView() {
-        super(new BorderLayout());
-        studentInfoTable = new JTable(new Object[][] {}, new Object[] {"Name", "Oi"});
+    public GradeStudentView(String studentID) {
+        super(true);
 
-        JScrollPane scrollPane = new JScrollPane(studentInfoTable);
-        backButton = new JButton("Back");
-        backButton.setPreferredSize(GUI.buttonSize);
+        this.studentID = studentID;
 
-        gradeButton = new JButton("Grade");
+        query = "" +
+                "SELECT ModuleID AS 'Module' " +
+                "     , Grades.StudentPeriod AS Period " +
+                "     , Grade AS 'Initial Grade' " +
+                "     , Resit AS 'Resit Grade' " +
+                "  FROM Grades " +
+                "  JOIN StudentPeriod" +
+                "       ON StudentPeriod.StudentPeriod = Grades.StudentPeriod " +
+                " WHERE StudentPeriod.StudentID = ?;";
 
 
-        add(scrollPane, BorderLayout.PAGE_START);
+        try {
+            model = (DefaultTableModel) GUI.queryToTable(query, s -> s.setString(1, studentID));
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(
+                    null,
+                    "Couldn't get grades: " + e.getMessage()
+            );
+            e.printStackTrace();
+        }
 
-        add(new JTextField("Hi"), BorderLayout.CENTER);
+        table = new JTable(model);
 
-        JPanel bottomPanel = new JPanel(new FlowLayout());
-        bottomPanel.add(gradeButton);
-        bottomPanel.add(backButton);
 
-        add(bottomPanel, BorderLayout.PAGE_END);
+        JScrollPane scrollPane = new JScrollPane(table);
+        centerPanel.add(scrollPane);
     }
 
-    public JButton getBackButton() {
-        return backButton;
-    }
-
-    public JButton getGradeButton() {
-        return gradeButton;
-    }
-
-    public JTable getStudentInfoTable() {
-        return studentInfoTable;
+    public DefaultTableModel getModel() {
+        model.fireTableDataChanged();
+        return model;
     }
 }

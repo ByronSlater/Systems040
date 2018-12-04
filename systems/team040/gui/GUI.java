@@ -1,5 +1,6 @@
 package systems.team040.gui;
 
+import systems.team040.functions.CheckedConsumer;
 import systems.team040.functions.SQLFunctions;
 
 import javax.swing.table.DefaultTableModel;
@@ -19,16 +20,22 @@ public class GUI {
     public static final Dimension buttonSize = new Dimension(100, 24);
 
     // Converts a query and paramters to a JTable
-    public static TableModel queryToTable(String query, String... parameters) throws SQLException {
+    @SafeVarargs
+    public static TableModel queryToTable(
+            String query, CheckedConsumer<PreparedStatement, SQLException>... parameters
+    ) throws SQLException {
+
         Vector<String> columnNames = new Vector<>();
         Vector<Vector<Object>> data = new Vector<>();
 
         try(Connection conn = SQLFunctions.connectToDatabase();
             PreparedStatement pstmt = conn.prepareStatement(query)) {
 
-            for(int i = 0; i < parameters.length; ++i) {
-                pstmt.setString(i + 1, parameters[i]);
+            for(CheckedConsumer<PreparedStatement, SQLException> param : parameters) {
+                param.accept(pstmt);
             }
+
+            System.out.println(pstmt);
 
             try(ResultSet rs = pstmt.executeQuery()) {
                 ResultSetMetaData metaData = rs.getMetaData();

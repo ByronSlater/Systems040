@@ -1,8 +1,6 @@
 package systems.team040.functions;
 
-import java.sql.SQLException;
-
 @FunctionalInterface
-public interface CheckedFunction<T, R> {
-    R apply(T t) throws SQLException;
+public interface CheckedFunction<T, R, E extends  Exception> {
+    R apply(T t) throws E;
 }

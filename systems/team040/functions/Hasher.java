@@ -8,7 +8,10 @@ import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
 
-
+/**
+ * Hasher is a class of static functions used to generate a digest of a password to be stored in the database
+ * and to validate a password entered with the one stored on the database
+ */
 public class Hasher {
     private static final int ITERATIONS = 1000;
     private static final int SALT_LEN = 8;

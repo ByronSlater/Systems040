@@ -10,7 +10,12 @@
  */
 package systems.team040.functions;
 
-import java.sql.*;
+import com.mysql.cj.protocol.Resultset;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 public class TeacherFunctions {
 	/**
@@ -21,33 +26,17 @@ public class TeacherFunctions {
 			String moduleID, String studentPeriod, int grade, boolean resit
 	) throws SQLException {
 
-	    String query = resit ?
-				"UPDATE TABLE Grades SET Resit = ? WHERE StudentPeriod = ?;" :
-				"UPDATE TABLE Grades SET Grade = ? Where StudentPeriod = ?;";
+	    String query = resit
+				? "UPDATE TABLE Grades SET Resit = ? WHERE StudentPeriod = ? AND ModuleID = ?;"
+				: "UPDATE TABLE Grades SET Grade = ? Where StudentPeriod = ? AND ModuleID = ?;";
 
 		try(Connection con = SQLFunctions.connectToDatabase();
 			PreparedStatement pstmt = con.prepareStatement(query)) {
 
 		    pstmt.setInt(1, grade);
 		    pstmt.setString(2, studentPeriod);
+		    pstmt.setString(3, moduleID);
 			pstmt.executeUpdate();
-		}
-	}
-
-	/**
-	 * Function employed to retrieve module credit values.
-	 * @throws SQLException 
-	 */
-	private static int getCreditValue(
-			Connection con, String ModuleID
-	) throws SQLException{
-
-		String query = "SELECT Credits FROM Module WHERE ModuleID = ?;";
-		PreparedStatement pstmt = con.prepareStatement(query);
-
-		try(ResultSet rs = pstmt.executeQuery()) {
-			rs.next();
-			return rs.getInt("Credits");
 		}
 	}
 
@@ -55,374 +44,290 @@ public class TeacherFunctions {
 	 * Function employed to calculate students' weighted mean grades.
 	 * @throws SQLException
 	 */
-	public static double calculateWeightedMeanGrade(String StudentPeriod) throws SQLException {
-	    Connection con = null;
-	    PreparedStatement pstmt = null;
-	    ResultSet grades = null;
-	    double gradesSum = 0;
-	    double weightedMean = 0;
+	public static float calculateWeightedMeanGrade(Connection con, String studentPeriod, int level) throws SQLException {
+	    float weightedMean;
+	    String query;
 	    
-		try {
-			con = SQLFunctions.connectToDatabase();
-			
-			pstmt = con.prepareStatement(
-		    		"SELECT DegreeLevel.Level,DegreeCode FROM DegreeLevel JOIN StudentPeriod ON DegreeLevel.DegreeLevel = StudentPeriod.DegreeLevel WHERE StudentPeriod = ?");
-		    pstmt.setString(1, StudentPeriod);
-		    ResultSet rs = pstmt.executeQuery();
-		    rs.next();
-		    int level = rs.getInt(1);
-		    String Degree = rs.getString(2);
-		    rs.close();
-		    pstmt.close();
-			
-			pstmt = con.prepareStatement(
-					"SELECT * FROM Grades WHERE StudentPeriod = ?");
-			pstmt.setString(1, StudentPeriod);
-			grades = pstmt.executeQuery();
-			
-			while (grades.next()) {
-				int creditValue = getCreditValue(con, grades.getString(2));
-				if (grades.getObject(4) instanceof Integer) {
-					if ((level == 4) || (Degree.charAt(3) == 'P')) {
-						if (grades.getInt(4) >= 50)
-							gradesSum += (50 * creditValue);
-						else
-							gradesSum += (grades.getInt(4) * creditValue);
-					} else {
-						if (grades.getInt(4) >= 40)
-							gradesSum += (40 * creditValue);
-						else
-							gradesSum += (grades.getInt(4) * creditValue);
-					}
-				} else {
-					gradesSum += (grades.getInt(3) * creditValue); 
-				}
-			}
-			grades.close();
-			
-			if (level == 4)
-				weightedMean = gradesSum / 18000;
-			else
-				weightedMean = gradesSum / 12000;
-		}
-		catch (SQLException ex) {
-		    ex.printStackTrace();
-		}
-		finally {
-			SQLFunctions.closeAll(con, pstmt);
-		}
+        // this query sums up all the best of their grades and multiplies each of them by the credit
+        // value of the module they scored that grade in, so when we divide through by the total credits
+        // available we get the % they achieved
+        query = "SELECT SUM(GREATEST(grade, resit) * credits)" +
+                "  FROM (" +
+                "		SELECT COALESCE(Grade, 0) as grade, LEAST(COALESCE(Resit, 0), 40) as resit, Credits" +
+                "  		  FROM Grades" +
+                "  	      JOIN Module" +
+                "              ON Grades.ModuleID = Module.ModuleID" +
+                "        WHERE StudentPeriod = ?" +
+                ") as t1;";
+
+        try(PreparedStatement pstmt = con.prepareStatement(query)) {
+            pstmt.setString(1, studentPeriod);
+
+            try(ResultSet rs = pstmt.executeQuery()) {
+                rs.next();
+                weightedMean = level == 4
+                        ? (float)rs.getInt(1) / 18000
+                        : (float)rs.getInt(1) / 12000;
+
+            }
+        }
 		return weightedMean;
 	}
-	
+
+	static int getLevel(Connection con, String studentPeriod) throws SQLException {
+		int level;
+
+		String query = "" +
+				"SELECT Level" +
+				"  FROM DegreeLevel" +
+				"  JOIN StudentPeriod" +
+				"       ON DegreeLevel.DegreeLevel = StudentPeriod.DegreeLevel" +
+				" WHERE StudentPeriod = ?";
+
+		try(PreparedStatement pstmt = con.prepareStatement(query)) {
+			pstmt.setString(1, studentPeriod);
+			try(ResultSet rs = pstmt.executeQuery()) {
+				rs.next();
+				level = rs.getInt("Level");
+
+			}
+		}
+
+		return level;
+	}
+
+	public static boolean calculateIfPassed(String studentPeriod) throws SQLException {
+	    try(Connection con = SQLFunctions.connectToDatabase()) {
+	    	return calculateIfPassed(con, studentPeriod);
+		}
+	}
+
 	/**
 	 * Function employed to calculate whether a student has passed their period of study.
 	 * @throws SQLException
 	 */
-	public static boolean calculateIfPassed(String StudentPeriod) throws SQLException {
-		Connection con = null;
-	    PreparedStatement pstmt = null;
-	    Boolean allModulesPassed = true;
-	    Boolean weightedMeanPass = false;
-	    Boolean concededPass = false;
-	    double weightedMean = 0;
-	    
-		try {
-			con = SQLFunctions.connectToDatabase();
-			
-			pstmt = con.prepareStatement(
-		    		"SELECT DegreeLevel.LevelFROM DegreeLevel JOIN StudentPeriod ON DegreeLevel.DegreeLevel = StudentPeriod.DegreeLevel WHERE StudentPeriod = ?");
-		    pstmt.setString(1, StudentPeriod);
-		    ResultSet rs = pstmt.executeQuery();
-		    rs.next();
-		    int level = rs.getInt(1);
-		    rs.close();
-		    pstmt.close();
-			
-			pstmt = con.prepareStatement(
-					"SELECT * FROM StudentPeriod WHERE StudentPeriod = ?");
-			pstmt.setString(1, StudentPeriod);
-			ResultSet student = pstmt.executeQuery();
-			student.next();
-			pstmt.close();
-			
-			pstmt = con.prepareStatement(
-					"SELECT * FROM Grades WHERE StudentPeriod = ?");
-			pstmt.setString(1, student.getString(1));
-			ResultSet modules = pstmt.executeQuery();
-			student.close();
-			
-			int creditsFailed = 0;
-			while (modules.next()) {
-				if (level >= 4) {
-					if (modules.getInt(3) < (0.9 * 50))
-						allModulesPassed = false;
-					else if (modules.getInt(3) < 50)
-						creditsFailed += getCreditValue(con, modules.getString(1));
-				} else {
-					if (modules.getInt(3) < (0.9 * 40))
-						allModulesPassed = false;
-					else if (modules.getInt(3) < 40)
-						creditsFailed += getCreditValue(con, modules.getString(1));
-				}
-			}
-			modules.close();
-			
-			if (level >= 4 && creditsFailed <= 15)
-				concededPass = true;
-			else if (creditsFailed <= 20)
-				concededPass = true;
-			
-			weightedMean = calculateWeightedMeanGrade(StudentPeriod);
-			if (level <= 3 && weightedMean >= 40)
-				weightedMeanPass = true;
-			else if (level >= 4 && weightedMean >= 50)
-				weightedMeanPass = true;
+	public static boolean calculateIfPassed(Connection con, String studentPeriod) throws SQLException {
+	    String query;
+	    int passPercent, level, failableCredits, creditsTaken;
+
+        level = getLevel(con, studentPeriod);
+
+        // set constants based on level of study
+        if(level == 4) {
+            passPercent = 50;
+            failableCredits = 15;
+            creditsTaken = 180;
+        } else {
+            passPercent = 40;
+            failableCredits = 20;
+            creditsTaken = 120;
+        }
+
+        // This nifty little query calculates how many modules have been failed, with any that hold more than
+        // the maximum number of failable credits counting as 2 (and thus failing the degree) and, at the same time
+        // calculates the weighted mean.
+        query = "" +
+                "SELECT SUM(BestGrade * Credits) / ? AS WeightedMean											" +
+                "     , SUM(FailedCost * IF(BestGrade < ?, IF(BestGrade < ?, 2, 1), 0)) AS FailedModules		" +
+                "  FROM (																						" +
+                "		SELECT GREATEST(COALESCE(Grade, 0)														" +
+                " 		     , LEAST(COALESCE(Resit, 0), ?)) as BestGrade										" +
+                "		     , Credits																			" +
+                "		     , IF(Credits > ?, 2, 1) as FailedCost												" +
+                "		  FROM Grades																			" +
+                "		  JOIN Module																			" +
+                " 		       ON Grades.ModuleID = Module.ModuleID												" +
+                "		 WHERE Grades.StudentPeriod = ?															" +
+                ") as t1;																						";
+
+
+        try(PreparedStatement pstmt = con.prepareStatement(query)) {
+            pstmt.setInt(1, creditsTaken);
+            pstmt.setInt(2, passPercent);
+            pstmt.setInt(3, passPercent - 10);
+            pstmt.setInt(4, passPercent);
+            pstmt.setInt(5, failableCredits);
+            pstmt.setString(6, studentPeriod);
+
+            try(ResultSet rs = pstmt.executeQuery()) {
+                rs.next();
+                float weightedMean = rs.getFloat("WeightedMean");
+                int failedModules = rs.getInt("FailedModules");
+
+                return !(weightedMean < passPercent) && failedModules <= 1;
+            }
 		}
-		finally {
-			SQLFunctions.closeAll(con, pstmt);
-		}
-		if ((allModulesPassed && weightedMeanPass) || (weightedMeanPass && concededPass))
-			return true;
-		else
-			return false;
 	}
-	
-	/**
-	 * Function employed to retrieve the next level of a degree.
-	 * @throws SQLException 
-	 */
-	private static String getNextDegreeLevel(Connection con, String currentStudyPeriod) throws SQLException {
-		String currentLevel = currentStudyPeriod.substring(0, 1);
-		String degreeCode = currentStudyPeriod.substring(1);
-		String nextLevel = "0";
-		
-		if (degreeCode.length() == 7) {
-			if (getNumberOfLevels(con, degreeCode) == 4) {
-				if (currentLevel == "P")
-					nextLevel = "4";
-				else if (Integer.parseInt(currentLevel) == 3)
-					nextLevel = "P";
-				else
-					nextLevel = Integer.toString(Integer.parseInt(nextLevel) + 1);
-			} else if (getNumberOfLevels(con, degreeCode) == 3) {
-				if (currentLevel == "P")
-					nextLevel = "3";
-				else if (Integer.parseInt(currentLevel) == 2)
-					nextLevel = "P";
-				else
-					nextLevel = Integer.toString(Integer.parseInt(nextLevel) + 1);
-			}
-		} else
-			nextLevel = Integer.toString((Integer.parseInt(currentLevel) + 1));
-		
-		return nextLevel;
+
+	public enum ProgressReturn {
+		Failed, Progressed, NotGraded;
 	}
-	
-	// Unsure where startDate comes from, passing it in externally for now.
+
 	/**
 	 * Function employed to register from, graduate from, or fail a period of study.
-	 * @throws SQLException 
+     *
+	 * Could/should potentially be split into more modular functions, e.g. one for registering a student
+	 * for a new year and one for registering a student for resitting a year but we don't need to use the code
+	 * elsewhere so it's all in this big beast
+	 * @throws SQLException
 	 */
-	public static void progressToNextPeriod(String currentStudentPeriod, String startDate) throws SQLException {
-		Connection con = null;
-	    PreparedStatement pstmt = null;
-	    
-		try {			
-			con = SQLFunctions.connectToDatabase();
-			pstmt = con.prepareStatement("SELECT * FROM StudentPeriod WHERE StudentPeriod = ?");
-			pstmt.setString(1, currentStudentPeriod);
-			ResultSet currentPeriod = pstmt.executeQuery();
-			currentPeriod.next();
-			pstmt.close();
-			
-			String nextPeriodID = Integer.toString(((int) currentPeriod.getString(2).charAt(0)) + 1);
-			
-			if (currentPeriod.getString(3).substring(0,1) == "P" || calculateIfPassed(currentStudentPeriod)) {
-				if (currentPeriod.getString(3).substring(0,1) == "P" || Integer.parseInt(currentPeriod.getString(3).substring(0,1)) < getNumberOfLevels(con, currentPeriod.getString(3).substring(1))) {
-					// Progress to next level.
-					pstmt = con.prepareStatement(
-							"INSERT INTO StudentPeriod VALUES(?, ?, ?, ?, ?)");
-					pstmt.setString(1, nextPeriodID + currentPeriod.getString(1).substring(1));
-					pstmt.setString(2, nextPeriodID);
-					pstmt.setString(3, getNextDegreeLevel(con, currentPeriod.getString(3)));
-					pstmt.setString(4, currentPeriod.getString(4));
-					pstmt.setString(5, startDate);
-					pstmt.executeUpdate();
-					pstmt.close();					
-				} else {
-					// Graduate.
-					System.out.println("Student has graduated with a " + getDegreeClass(currentPeriod.getString(1).substring(1), false));
-				}
-			} else {
-				// If period failed.
-				if (currentPeriod.getString(3).charAt(4) == 'P') {
-					// < Masters stuff.
-					
-				} else if (currentPeriod.getString(3).substring(0,1) == "4") {
-					// Graduation with BSc.
-					System.out.println("Student has graduated with a BSc of class " + getDegreeClass(currentPeriod.getString(1).substring(1), true));
-					
-				} else {
-					// Repeat current level if not already repeated.
-					pstmt = con.prepareStatement(
-							"SELECT COUNT (*) FROM StudentPeriod WHERE DegreeLevel = ?");
-					pstmt.setString(1, currentPeriod.getString(3));
-					ResultSet totalRepeats = pstmt.executeQuery();
-					pstmt.close();
-					totalRepeats.next();
-					
-					if (totalRepeats.getInt(1) > 1) {
-						System.out.println("Student has failed to progress.");	 
-					} else {
-						// Repeat level and insert grades for modules already passed.
-						pstmt = con.prepareStatement(
-								"INSERT INTO StudentPeriod VALUES(?, ?, ?, ?, ?)");
-						pstmt.setString(1, nextPeriodID + currentPeriod.getString(1).substring(1));
-						pstmt.setString(2, nextPeriodID);
-						pstmt.setString(3, currentPeriod.getString(3));
-						pstmt.setString(4, currentPeriod.getString(4));
-						pstmt.setString(5, startDate);
-						pstmt.executeUpdate();
-						pstmt.close();
-						
-						pstmt = con.prepareStatement(
-								"SELECT * FROM Grades WHERE DegreeLevel = ?");
-						pstmt.setString(1, currentPeriod.getString(3));
-						ResultSet carriedGrades = pstmt.executeQuery();
-						pstmt.close();
-						
-						while (carriedGrades.next()) {
-							pstmt = con.prepareStatement(
-									"INSERT INTO Grades VALUES (?, ?, ?, ?)");
-							pstmt.setString(1, carriedGrades.getString(1));
-							pstmt.setString(2, nextPeriodID + currentPeriod.getString(1).substring(1));
-							
-							if ((carriedGrades.getInt(3) >= 40) || (carriedGrades.getInt(4) >= 40)) {
-								pstmt.setInt(3, carriedGrades.getInt(3));
-								pstmt.setInt(4, carriedGrades.getInt(4));
-							} else {
-								// Repeated year grades capped to pass mark, stored as resit.
-								pstmt.setInt(3, -1);
-								pstmt.setInt(4, -1);
-							}
-						}
+	public static ProgressReturn progressToNextPeriod(String studentPeriod) throws SQLException {
+		char currentPeriodID, nextPeriodID;
+		String degreeCode, degreeLevel;
+		String query;
+		String currentDate, nextDate;
+		String studentID;
+		String nextDegreeLevel;
+		int level;
+
+
+		try(Connection con = SQLFunctions.connectToDatabase()) {
+		    con.setAutoCommit(false);
+
+		    // First we'll check if there are any modules they haven't received a grade for and quit out
+			query = "" +
+					"SELECT COUNT(*) " +
+					"  FROM Grades " +
+					" WHERE StudentPeriod = ? " +
+					"       AND Grade IS NULL " +
+					"       AND Resit IS NULL; ";
+
+			try(PreparedStatement pstmt = con.prepareStatement(query)) {
+				pstmt.setString(1, studentPeriod);
+				try(ResultSet rs = pstmt.executeQuery()) {
+					rs.next();
+					if(rs.getInt(1) > 0) {
+						return ProgressReturn.NotGraded;
 					}
 				}
 			}
-		} finally {
-			SQLFunctions.closeAll(con, pstmt);
-		}
-	}
-	
-	/**
-	 * Function employed to retrieve the total number of levels containing modules on a degree course.
-	 * @throws SQLException 
-	 */
-	private static int getNumberOfLevels(Connection con, String DegreeCode) throws SQLException {
-		PreparedStatement pstmt = con.prepareStatement(
-				"SELECT COUNT(*) FROM DegreeLevel WHERE DegreeCode = ? AND Level <> 'P'");
-		pstmt.setString(1, DegreeCode);
-		int level = pstmt.executeQuery().getInt(1);
-		pstmt.close();
-		return level;
-	}
-	
-	/**
-	 * Function employed to calculate the overall degree result.
-	 * @throws SQLException 
-	 */
-	public static String getDegreeClass(String StudentID, boolean truncatedMSc) throws SQLException {
-		Connection con = null;
-	    PreparedStatement pstmt = null;
-	    double finalGrade = 0;
-	    double finalMean = 0;
-	    String finalDegreeClass = "";
-	    
-		try {
-			con = SQLFunctions.connectToDatabase();
-			
-			pstmt = con.prepareStatement(
-					"SELECT * FROM StudentPeriod WHERE StudentID = ?");
-			pstmt.setString(1, StudentID);
-			ResultSet StudentPeriods = pstmt.executeQuery();
-			pstmt.close();
-			
-			int degreeLength = getNumberOfLevels(con, StudentPeriods.getString(3).substring(1));
-			
-			// Calculates grade weightings, disregarding failed 4th level from MSc if necessary.
-			while (StudentPeriods.next()) {
-				if (StudentPeriods.getString(3).substring(0, 1) == "P")
-					continue;
-				else if ((StudentPeriods.getString(3).substring(0,1) == "4") && truncatedMSc)
-					continue;
-				else if ((StudentPeriods.getString(3).substring(0,1) == "1") && degreeLength == 1)
-					finalGrade = calculateWeightedMeanGrade(StudentPeriods.getString(1));
-				else if (StudentPeriods.getString(3).substring(0,1) == "1")
-						continue;
-				else if (StudentPeriods.getString(3).substring(0,1) == "2")
-					finalGrade += calculateWeightedMeanGrade(StudentPeriods.getString(1));
-				else
-					finalGrade += (2 * calculateWeightedMeanGrade(StudentPeriods.getString(1)));
+
+			// get information on next studentperiod etc.
+			query = "" +
+					"SELECT *" +
+					"  FROM StudentPeriod" +
+					"  JOIN DegreeLevel" +
+					"       ON StudentPeriod.DegreeLevel = DegreeLevel.DegreeLevel" +
+					" WHERE StudentPeriod = ?;";
+			try(PreparedStatement pstmt = con.prepareStatement(query)) {
+				pstmt.setString(1, studentPeriod);
+
+				// get all the information about the current degree level
+				try (ResultSet rs = pstmt.executeQuery()) {
+					rs.next();
+
+					level = rs.getInt("Level");
+					currentPeriodID = rs.getString("PeriodID").charAt(0);
+					nextPeriodID = (char) (currentPeriodID + 1);
+					currentDate = rs.getString("StartDate");
+					degreeCode = rs.getString("DegreeCode");
+					studentID = rs.getString("StudentID");
+					degreeLevel = rs.getString("DegreeLevel");
+				}
 			}
-	
-			if (degreeLength == 1)
-				finalMean = finalGrade;
-			else if (degreeLength == 4) {
-				if (truncatedMSc)
-					finalMean = (finalGrade / 3);
-				else
-					finalMean = (finalGrade / 5);
-			} else
-				finalMean = (finalGrade / 3);
-			
-			// Determines final degree classifications.
-			if (degreeLength == 1) {
-				if (finalMean >= 69.5)
-					finalDegreeClass = "Distinction";
-				else if (finalMean >= 59.5)
-					finalDegreeClass = "Merit";
-				else if (finalMean >= 49.5)
-					finalDegreeClass = "Pass";
-				else
-					finalDegreeClass = "Fail";
-			} else if (degreeLength == 3) {
-				// Can only achieve Pass (non-honours) if failed level 3.
-				pstmt = con.prepareStatement(
-						"SELECT COUNT (*) FROM StudentPeriod WHERE DegreeLevel = ?");
-				pstmt.setString(1, "3" + StudentPeriods.getString(3).substring(1));
-				ResultSet repeats = pstmt.executeQuery();
-				repeats.next();
-				pstmt.close();
-				
-				if (repeats.getInt(1) > 1)
-					finalDegreeClass = "Pass (Non-Honours)";
-				else if (finalMean >= 69.5)
-					finalDegreeClass = "First Class";
-				else if (finalMean >= 59.5)
-					finalDegreeClass = "Upper Second";
-				else if (finalMean >= 49.5)
-					finalDegreeClass = "Lower Second";
-				else if (finalMean >= 44.5)
-					finalDegreeClass = "Third Class";
-				else if (finalMean >= 39.5)
-					finalDegreeClass = "Pass (Non-Honours)";
-				else
-					finalDegreeClass = "Fail";
-			} else if (degreeLength == 4) {
-				if (finalMean >= 69.5)
-					finalDegreeClass = "First Class";
-				else if (finalMean >= 59.5)
-					finalDegreeClass = "Upper Second";
-				else if (finalMean >= 49.5)
-					finalDegreeClass = "Lower Second";
-				else
-					finalDegreeClass = "Fail";
+
+			// get the next startdate
+			query = "SELECT StartDate FROM TermDates WHERE StartDate > ? ORDER BY StartDate;";
+			try(PreparedStatement pstmt = con.prepareStatement(query)) {
+				pstmt.setString(1, currentDate);
+
+				try(ResultSet rs = pstmt.executeQuery()) {
+					rs.next();
+
+					nextDate = rs.getString("StartDate");
+				}
 			}
-			StudentPeriods.close();
-			
-		} finally {
-			SQLFunctions.closeAll(con, pstmt);
+
+			// if we passed we set up the next year
+			if(calculateIfPassed(con, studentPeriod)) {
+
+				// get the next degreeLevel
+				query = "SELECT DegreeLevel FROM DegreeLevel WHERE Level > ? AND DegreeCode = ?";
+				try(PreparedStatement pstmt = con.prepareStatement(query)) {
+					pstmt.setInt(1, level);
+					pstmt.setString(2, degreeCode);
+
+					try(ResultSet rs = pstmt.executeQuery()) {
+					    // assume we have already checked that this is not the last level of the degree
+						rs.next();
+                        nextDegreeLevel = rs.getString("DegreeLevel");
+					}
+				}
+
+
+				// create the new studentperiod
+				query = "INSERT INTO StudentPeriod(StudentPeriod, PeriodID, DegreeLevel, StudentID, StartDate) " +
+						"VALUES (?, ?, ?, ?, ?);";
+				try(PreparedStatement pstmt = con.prepareStatement(query)) {
+					pstmt.setString(1, nextPeriodID + studentID);
+					pstmt.setString(2, String.valueOf(nextPeriodID));
+					pstmt.setString(3, nextDegreeLevel);
+					pstmt.setString(4, studentID);
+					pstmt.setString(5, nextDate);
+
+					pstmt.executeUpdate();
+				}
+
+				// add the new grades
+				query = "" +
+						"INSERT INTO Grades (StudentPeriod, ModuleID)" +
+                        "SELECT ?, ModuleID " +
+                        "  FROM DegreeModule " +
+                        " WHERE DegreeLevel = ? AND isCore = 1;";
+
+				try(PreparedStatement pstmt = con.prepareStatement(query)) {
+					pstmt.setString(1, nextPeriodID + studentID);
+					pstmt.setString(2, nextDegreeLevel);
+					pstmt.executeUpdate();
+				}
+
+				con.commit();
+				return ProgressReturn.Progressed;
+
+			} else {
+				// we didn't pass so we add a new studentperiod at the same level and carry forward grades
+
+				// create new studentPeriod at same level
+				query = "" +
+						"INSERT INTO StudentPeriod(StudentPeriod, PeriodID, DegreeLevel, StudentID, StartDate)" +
+						"VALUES (?, ?, ?, ?, ?);";
+
+				try(PreparedStatement pstmt = con.prepareStatement(query)) {
+					pstmt.setString(1, nextPeriodID + studentID);
+					pstmt.setString(2, String.valueOf(nextPeriodID));
+					pstmt.setString(3, degreeLevel);
+					pstmt.setString(4, studentID);
+					pstmt.setString(5, nextDate);
+
+					pstmt.executeUpdate();
+				}
+
+				int passGrade = level == 4 ? 50 : 40;
+
+				// insert old grade if it passed or null if it didn't
+				query = "" +
+						"INSERT INTO Grades (StudentPeriod, Grade, ModuleID) " +
+						"SELECT StudentPeriod, IF(BestGrade >= ?, BestGrade, NULL), ModuleID " +
+						"  FROM (" +
+                        "		SELECT ? AS StudentPeriod " +
+						"		     , GREATEST(COALESCE(Grade, 0),LEAST(COALESCE(Resit, 0), ?)) AS BestGrade " +
+						"		     , ModuleID AS ModuleID" +
+						"		  FROM Grades " +
+						"		 WHERE StudentPeriod = ? " +
+						") as t1;";
+
+				try(PreparedStatement pstmt = con.prepareStatement(query)) {
+					pstmt.setInt(1, passGrade);
+					pstmt.setString(2, nextPeriodID + studentID);
+					pstmt.setInt(3, passGrade);
+					pstmt.setString(4, studentPeriod);
+
+					pstmt.executeUpdate();
+				}
+
+				con.commit();
+				return ProgressReturn.Failed;
+			}
 		}
-		return finalDegreeClass;
 	}
 }
