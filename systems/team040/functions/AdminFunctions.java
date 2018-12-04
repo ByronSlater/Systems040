@@ -94,7 +94,7 @@ public class AdminFunctions {
 	/**
 	 * Function employed to add degree courses.
 	 */
-	public static void addDegree(String degreeCode, String degreeName, int degreeLength) throws SQLException {
+	public static void addDegree(String degreeCode, String degreeName, int degreeLength, boolean hasIndustryYear) throws SQLException {
 		String degreeQuery = "INSERT INTO Degree VALUES (?, ?);";
 		String degreeLevelsQuery = "INSERT INTO DegreeLevel VALUES (?, ?, ?,?);";
 
@@ -107,12 +107,16 @@ public class AdminFunctions {
 			pstmt1.setString(1, degreeCode);
 			pstmt1.setString(2, degreeName);
 			pstmt1.executeUpdate();
-
-			for(int i = 1; i <= degreeLength; i++){
+			
+			int actualLength = degreeLength;
+			if (hasIndustryYear)
+				actualLength += 1;
+			
+			for(int i = 1; i <= actualLength; i++){
 				pstmt2.setString(1, i + degreeCode);
 				pstmt2.setString(2, degreeCode);
 				pstmt2.setString(3, Integer.toString(i));
-				if (i == (degreeLength - 1))
+				if (i == (actualLength - 1) && (hasIndustryYear))
 					pstmt2.setBoolean(4, true);
 				else
 					pstmt2.setBoolean(4, false);
