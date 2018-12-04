@@ -94,14 +94,16 @@ public class AdminFunctions {
 	/**
 	 * Function employed to add degree courses.
 	 */
-	public static void addDegree(String degreeCode, String degreeName, int degreeLength, boolean hasIndustryYear) throws SQLException {
+	public static void addDegree(String degreeCode, String degreeName, int degreeLength, boolean hasIndustryYear, String pDept) throws SQLException {
 		String degreeQuery = "INSERT INTO Degree VALUES (?, ?);";
-		String degreeLevelsQuery = "INSERT INTO DegreeLevel VALUES (?, ?, ?,?);";
+		String degreeLevelsQuery = "INSERT INTO DegreeLevel VALUES (?, ?, ?, ?);";
+		String degreeDepartment = "INSERT INT DegreeDepartments VALUES (?,?,false):";
 
 
 		try(Connection con = SQLFunctions.connectToDatabase();
 			PreparedStatement pstmt1 = con.prepareStatement(degreeQuery);
-			PreparedStatement pstmt2 = con.prepareStatement(degreeLevelsQuery)) {
+			PreparedStatement pstmt2 = con.prepareStatement(degreeLevelsQuery);
+			PreparedStatement pstmt3 = con.prepareStatement(degreeDepartment)){
 
 		    con.setAutoCommit(false);
 			pstmt1.setString(1, degreeCode);
@@ -128,7 +130,15 @@ public class AdminFunctions {
 			    pstmt2.setString(2, degreeCode);
 			    pstmt2.setString(3, "Y");
 			    pstmt2.executeUpdate();
-			}
+			    
+			    pstmt3.setString(1, "Y" + degreeCode);
+			} else
+				pstmt3.setString(1, degreeCode);
+			pstmt3.setString(2, pDept);
+			
+			
+			
+			
 
 			con.commit();
 		}
