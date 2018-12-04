@@ -10,8 +10,6 @@
  */
 package systems.team040.functions;
 
-import com.mysql.cj.protocol.Resultset;
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -20,30 +18,7 @@ import java.util.ArrayList;
 
 public class TeacherFunctions {
 	/**
-	 * Function employed to add or update student grades.
-	 * @throws SQLException
-	 */
-	public static void addGrade(
-			String moduleID, String studentPeriod, int grade, boolean resit
-	) throws SQLException {
-
-	    String query = resit
-				? "UPDATE TABLE Grades SET Resit = ? WHERE StudentPeriod = ? AND ModuleID = ?;"
-				: "UPDATE TABLE Grades SET Grade = ? Where StudentPeriod = ? AND ModuleID = ?;";
-
-		try(Connection con = SQLFunctions.connectToDatabase();
-			PreparedStatement pstmt = con.prepareStatement(query)) {
-
-		    pstmt.setInt(1, grade);
-		    pstmt.setString(2, studentPeriod);
-		    pstmt.setString(3, moduleID);
-			pstmt.executeUpdate();
-		}
-	}
-
-	/**
-	 * Function employed to calculate students' weighted mean grades.
-	 * @throws SQLException
+	 * Function employed to calculate students' weighted mean grades for a specific study period.
 	 */
 	public static float calculateWeightedMeanGrade(Connection con, String studentPeriod, char level) throws SQLException {
 	    float weightedMean;
@@ -75,6 +50,9 @@ public class TeacherFunctions {
 		return weightedMean;
 	}
 
+	/**
+	 * Returns how many non-placement years there are in the degree of a given student
+	 */
 	private static int getDegreeLength(Connection con, String studentID) throws SQLException {
 		String query = "" +
 				"SELECT COUNT(*)" +
@@ -95,6 +73,9 @@ public class TeacherFunctions {
 		}
 	}
 
+	/**
+	 * Calculates a grade for a student based on their entire performance at university
+	 */
 	public static Grade gradeDegree(String studentID, boolean passedLast) throws SQLException {
 	    try(Connection con = SQLFunctions.connectToDatabase()) {
 	    	int lengthOfDegree;
@@ -210,6 +191,9 @@ public class TeacherFunctions {
 		}
 	}
 
+	/**
+	 * Gets the character level for a given studentperiod
+	 */
 	public static char getLevel(Connection con, String studentPeriod) throws SQLException {
 		String query = "" +
 				"SELECT Level" +
@@ -290,6 +274,9 @@ public class TeacherFunctions {
 		}
 	}
 
+	/**
+	 * Simple enum to show possible return values for the progress function
+	 */
 	public enum ProgressReturn {
 		Failed, Progressed, NotGraded, NotEnoughCredits, PassedAndFinished, FailedAndFinished;
 	}

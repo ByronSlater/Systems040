@@ -42,7 +42,7 @@ public class Hasher {
      * Given a password, this generates the digest that we put into the database, in the form of
      * salt + '$' + hash(salt + password)
      */
-    public static String generateDigest(char[] password) {
+    static String generateDigest(char[] password) {
         byte[] salt = generateSalt();
         byte[] hash = hash(password, salt);
 

@@ -11,12 +11,14 @@ import javax.swing.text.JTextComponent;
 import java.awt.*;
 import java.sql.*;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.function.Supplier;
 
 import static systems.team040.functions.AccountType.Admin;
-import static systems.team040.functions.AccountType.Teacher;
 
+/**
+ * Was just supposed to contain the base application logic but now contains a stupid amount of code
+ * which should almost definitely be split into many many different files
+ */
 public class AppController {
     private JFrame frame;
     private Container contentPane;
@@ -998,7 +1000,7 @@ public class AppController {
         }
         view.addButton("Add").addActionListener(evt -> {
             try {
-                char[] pw = view.getPassword().length == 0 ? Student.generateRandomPassword() : view.getPassword();
+                char[] pw = view.getPassword().length == 0 ? StudentFunctions.generateRandomPassword() : view.getPassword();
                 RegistrarFunctions.addStudent(
                         view.getString("title"),
                         view.getString("forename"),
@@ -1044,7 +1046,16 @@ public class AppController {
             );
         }
         view.addButton("Delete").addActionListener(e -> {
-            RegistrarFunctions.removeStudent(view.getString("username"));
+            try {
+                RegistrarFunctions.removeStudent(view.getString("username"));
+
+            } catch (SQLException e1) {
+                e1.printStackTrace();
+                JOptionPane.showMessageDialog(
+                        null, "Something went wrong"
+                );
+                return;
+            }
             JOptionPane.showMessageDialog(null, "Deleted!");
             changeView(registrarHome());
         });

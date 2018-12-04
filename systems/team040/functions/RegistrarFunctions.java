@@ -8,14 +8,12 @@ package systems.team040.functions;
 
 
 import java.sql.*;
-import java.util.ArrayList;
-
 /**
  * A class containing all the functions available to registrar accounts.
  */
 public class RegistrarFunctions {
     /**
-     * Gets the next highest registration number
+     * Gets the next highest registration number available on the db
      */
     private static String getNextRegNo() throws SQLException {
         int i = 1;
@@ -24,14 +22,15 @@ public class RegistrarFunctions {
             PreparedStatement pstmt = con.prepareStatement(query);
             ResultSet rs = pstmt.executeQuery()) {
 
-            rs.next();
+            if(rs.next()) {
+                i = rs.getInt(1) + 1;
+            } else {
 
-            i = rs.getInt(1) + 1;
-            if(rs.wasNull()) {
                 i = 1;
             }
         }
 
+        // regno is in '000000001' format
         return String.format("%09d", i);
     }
 
@@ -62,7 +61,6 @@ public class RegistrarFunctions {
                     } catch (NumberFormatException e) {
                         // Just catches strings we can't parse so we can skip
                     }
-
                 }
             }
         }
@@ -71,7 +69,7 @@ public class RegistrarFunctions {
     }
 
     /**
-     * Tells us if a studentperiod is a resit
+     * Tells us if a studentperiod is a resit, i.e. it is not the unique attempt of a degreelevel
      */
     public static boolean isRetake(Connection con, String studentPeriod) throws SQLException {
         String query = "SELECT DegreeLevel, StudentID FROM StudentPeriod WHERE StudentPeriod = ?; ";
@@ -191,7 +189,7 @@ public class RegistrarFunctions {
      * Function employed to remove student details. Takes the student username and deletes them for the UserAccount table.
      * This cascades and deletes the user from the system.
      */
-    public static void removeStudent(String username) {
+    public static void removeStudent(String username) throws SQLException {
         Connection con = null;
         PreparedStatement pstmt = null;
 
@@ -202,142 +200,9 @@ public class RegistrarFunctions {
             pstmt.setString(1, username);
             pstmt.executeUpdate();
         }
-        catch (SQLException ex) {
-            ex.printStackTrace();
-        }
         finally {
             SQLFunctions.closeAll(con, pstmt);
         }
-    }
-
-    /**
-     * Function employed to register a student for a study period.
-     */
-    public static void registerStudent(String PeriodID, String DegreeLevel, String StudentID, String StartDate) {
-        Connection con = null;
-        PreparedStatement pstmt = null;
-
-        try {
-            con = SQLFunctions.connectToDatabase();
-            pstmt = con.prepareStatement(
-                    "INSERT INTO StudentPeriod VALUES (?,?,?,?,?);");
-            pstmt.setString(1, PeriodID + StudentID);
-            pstmt.setString(2, PeriodID);
-            pstmt.setString(3, DegreeLevel);
-            pstmt.setString(4, StudentID);
-            pstmt.setString(5, StartDate);
-            pstmt.executeUpdate();
-        }
-        catch (SQLException ex) {
-            ex.printStackTrace();
-        }
-        finally {
-            SQLFunctions.closeAll(con, pstmt);
-        }
-    }
-
-
-
-    public static void addModule(String Module, String StudentPeriod){
-        Connection con = null;
-        PreparedStatement pstmt = null;
-        try {
-            con = SQLFunctions.connectToDatabase();
-            pstmt = con.prepareStatement(
-                    "INSERT INTO Grades VALUES (?,?,null,null)");
-            pstmt.setString(1, StudentPeriod);
-            pstmt.setString(2, Module);
-            pstmt.executeUpdate();
-        }
-        catch (SQLException ex) {
-            ex.printStackTrace();
-        }
-        finally {
-            SQLFunctions.closeAll(con, pstmt);
-        }
-    }
-    /**
-     * Function employed to list optional modules for a student. An empty list indicates full credits.
-     * @throws SQLException
-     */
-    public static ArrayList<String> listOptionalModule(String StudentID) throws SQLException {
-        Connection con = null;
-        PreparedStatement pstmt = null;
-        ArrayList<String> optionalModules = new ArrayList<String>();
-        try {
-            con = SQLFunctions.connectToDatabase();
-            pstmt = con.prepareStatement(
-                    "SELECT * MAX(PeriodID) FROM StudentPeriod WHERE StudentID = ?");
-            pstmt.setString(1, StudentID);
-            ResultSet period = pstmt.executeQuery();
-            period.next();
-            String StudentPeriod = period.getString(1);
-            String DegreeLevel = period.getString(3);
-            period.close();
-            int creditTotal = verifyCreditTotal(StudentPeriod);
-            int remainingCredits = 0;
-
-            if (DegreeLevel.charAt(4) == 'U')
-                remainingCredits = 120 - creditTotal;
-            else if (DegreeLevel.charAt(4) == 'P')
-                remainingCredits = 180 - creditTotal;
-            if (remainingCredits > 0) {
-                pstmt = con.prepareStatement(
-                        "SELECT * FROM DegreeModule WHERE DegreeLevel = ? AND CORE = 0");
-                pstmt.setString(1, DegreeLevel);
-                ResultSet modules = pstmt.executeQuery();
-                while (modules.next()) {
-                    if (modules.getInt(2) > remainingCredits)
-                        optionalModules.add(modules.getString(1));
-                }
-                modules.close();
-            }
-        }
-        catch (SQLException ex) {
-            ex.printStackTrace();
-        }
-        finally {
-            SQLFunctions.closeAll(con, pstmt);
-        }
-        return optionalModules;
-    }
-
-    /**
-     * Function employed to return the total number of credits for a students current degree course.
-     */
-    public static int verifyCreditTotal(String StudentPeriod) throws SQLException {
-        int creditTotal = 0;
-        Connection con = null;
-        PreparedStatement pstmt = null;
-        String DegreeLevel = null;
-        try {
-            con = SQLFunctions.connectToDatabase();
-            pstmt = con.prepareStatement(
-                    "SELECT DegreeLevel FROM StudentPeriod WHERE StudentPeriod = ?");
-            pstmt.setString(1, StudentPeriod);
-            ResultSet student = pstmt.executeQuery();
-            while(student.next()) {
-                DegreeLevel = student.getString(1);
-            }
-            student.close();
-            pstmt = con.prepareStatement(
-                    "SELECT Module.Credits FROM Module "
-                            + "JOIN DegreeModule ON Module.ModuleID = DegreeModule.ModuleID "
-                            + "WHERE DegreeModule.DegreeLevel = ?");
-            pstmt.setString(1, DegreeLevel);
-            ResultSet modules = pstmt.executeQuery();
-            while (modules.next()) {
-                creditTotal += modules.getInt(1);
-            }
-            modules.close();
-        }
-        catch (SQLException ex) {
-            ex.printStackTrace();
-        }
-        finally {
-            SQLFunctions.closeAll(con, pstmt);
-        }
-        return creditTotal;
     }
 }
 

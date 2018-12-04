@@ -1,7 +1,7 @@
 package systems.team040.functions;
 
 /**
- * Created this just to help with parameters for one function
+ * Created this just to help with parameters for one function because java doesn't have tuples
  */
 public class Pair<F, S> {
     public final F first;

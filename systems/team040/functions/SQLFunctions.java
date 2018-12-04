@@ -9,10 +9,8 @@
 
 package systems.team040.functions;
 
-import java.lang.AutoCloseable;
 import java.sql.*;
 import java.util.ArrayList;
-import java.util.function.Function;
 
 public class SQLFunctions {
 	public static Connection connectToDatabase() throws SQLException {
@@ -27,7 +25,7 @@ public class SQLFunctions {
 	/**
 	 * Just tries to call close on a param list of closeables handed to it
 	 */
-	public static void closeAll(AutoCloseable... closeables) {
+	static void closeAll(AutoCloseable... closeables) {
 	    for(AutoCloseable c : closeables) {
 	    	try {
 	    		if(c != null) { c.close(); }

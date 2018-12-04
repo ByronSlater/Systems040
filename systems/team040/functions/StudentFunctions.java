@@ -15,6 +15,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 public class StudentFunctions {
+    private static final int PASSWORD_LENGTH = 12;
+
     public static String getIDFromUsername(Connection con, String username) throws SQLException {
         String query = "SELECT StudentID FROM Student WHERE Username = ?;";
 
@@ -32,5 +34,20 @@ public class StudentFunctions {
         try(Connection con = SQLFunctions.connectToDatabase()) {
             return getIDFromUsername(con, username);
         }
+    }
+
+    /**
+     * Returns a randomly generated password with PASSWORD_LENGTH random alphabetic characters and one random
+     * number interspersed
+     */
+    public static char[] generateRandomPassword() {
+        char[] availChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890".toCharArray();
+        char[] password = new char[PASSWORD_LENGTH];
+
+        for(int i = 0; i < PASSWORD_LENGTH ; i++) {
+            password[i] = availChars[(int)(Math.random() * availChars.length)];
+        }
+
+        return password;
     }
 }

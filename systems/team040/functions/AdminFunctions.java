@@ -14,7 +14,6 @@ import java.sql.*;
 public class AdminFunctions {
 	/**
 	 * Function employed to create user accounts and set their privileges.
-	 * @throws SQLException
 	 */
 	public static void createAccount(String username, char[] password, int level) throws SQLException {
 		String digest = Hasher.generateDigest(password);
@@ -32,7 +31,6 @@ public class AdminFunctions {
 
 	/**
 	 * Function employed to remove a user account from the user account table given the username.
-	 * @
 	 */
 	public static void removeUser(String username) throws SQLException {
 	    String query = "DELETE FROM UserAccount WHERE username = ?;";
@@ -129,15 +127,10 @@ public class AdminFunctions {
 				pstmt2.executeUpdate();
 			}
 
-			
 			pstmt3.setString(1, actualDegreeCode);
 			pstmt3.setString(2, pDept);
 			pstmt3.executeUpdate();
 			
-			
-			
-			
-
 			con.commit();
 		}
 	}
@@ -200,22 +193,6 @@ public class AdminFunctions {
 			PreparedStatement pstmt = con.prepareStatement(query)) {
 
 			pstmt.setString(1, ModuleID);
-			pstmt.executeUpdate();
-		}
-	}
-	
-	/**
-	 * Function employed to assign modules to their degree courses.
-	 */
-	public static void assignModuleDegree(String ModuleID, String DegreeLevel, int Core) throws SQLException {
-		String query = "INSERT INTO DegreeModule VALUES (?, ?, ?);";
-
-		try(Connection con = SQLFunctions.connectToDatabase();
-			PreparedStatement pstmt = con.prepareStatement(query)) {
-
-			pstmt.setString(1, ModuleID);
-			pstmt.setString(2, DegreeLevel);
-			pstmt.setInt(3, Core);
 			pstmt.executeUpdate();
 		}
 	}
