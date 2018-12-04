@@ -92,12 +92,13 @@ public class AdminFunctions {
 	}
 	
 	/**
-	 * Function employed to add degree courses.
+	 * Function employed to add degree courses. Adds to the degree table and then creates items in the degreeLevel table based on the number of years and if there is a year in industry.
+	 * Finally creates a link the primary module of the department.
 	 */
 	public static void addDegree(String degreeCode, String degreeName, int degreeLength, boolean hasIndustryYear, String pDept) throws SQLException {
 		String degreeQuery = "INSERT INTO Degree VALUES (?, ?);";
 		String degreeLevelsQuery = "INSERT INTO DegreeLevel VALUES (?, ?, ?, ?);";
-		String degreeDepartment = "INSERT INT DegreeDepartments VALUES (?,?,false):";
+		String degreeDepartment = "INSERT INTO DegreeDepartments VALUES (?,?, true);";
 
 
 		try(Connection con = SQLFunctions.connectToDatabase();
@@ -105,36 +106,43 @@ public class AdminFunctions {
 			PreparedStatement pstmt2 = con.prepareStatement(degreeLevelsQuery);
 			PreparedStatement pstmt3 = con.prepareStatement(degreeDepartment)){
 
+			
+			int actualLength = degreeLength;
+			String actualDegreeCode = degreeCode;
+			if (hasIndustryYear) {
+				actualLength += 1;
+				actualDegreeCode =  degreeCode + "P";
+			}
+			
 		    con.setAutoCommit(false);
-			pstmt1.setString(1, degreeCode);
+			pstmt1.setString(1, actualDegreeCode);
 			pstmt1.setString(2, degreeName);
 			pstmt1.executeUpdate();
 			
-			int actualLength = degreeLength;
-			if (hasIndustryYear)
-				actualLength += 1;
 			
 			for(int i = 1; i <= actualLength; i++){
-				pstmt2.setString(1, i + degreeCode);
-				pstmt2.setString(2, degreeCode);
-				pstmt2.setString(3, Integer.toString(i));
-				if (i == (actualLength - 1) && (hasIndustryYear))
-					pstmt2.setBoolean(4, true);
+				
+				pstmt2.setString(2, actualDegreeCode);
+				if (i == (actualLength - 1) && (hasIndustryYear)) {
+					pstmt2.setString(3, "P");
+					pstmt2.setString(1, "P" + actualDegreeCode);
+				} else if ((i == actualLength) && (hasIndustryYear)){
+					pstmt2.setString(3, Integer.toString(i-1));
+					pstmt2.setString(1, i + actualDegreeCode);
+				} else
+					pstmt2.setString(3, Integer.toString(i));
+					pstmt2.setString(1, i + actualDegreeCode);
+				if (degreeLength == 1)
+					pstmt2.setInt(4, 4);
 				else
-					pstmt2.setBoolean(4, false);
+					pstmt2.setInt(4, i);
 				pstmt2.executeUpdate();
 			}
 
-			if (degreeCode.length() == 7) {
-			    pstmt2.setString(1, "Y" + degreeCode);
-			    pstmt2.setString(2, degreeCode);
-			    pstmt2.setString(3, "Y");
-			    pstmt2.executeUpdate();
-			    
-			    pstmt3.setString(1, "Y" + degreeCode);
-			} else
-				pstmt3.setString(1, degreeCode);
+			
+			pstmt3.setString(1, actualDegreeCode);
 			pstmt3.setString(2, pDept);
+			pstmt3.executeUpdate();
 			
 			
 			
