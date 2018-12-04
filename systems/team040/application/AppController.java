@@ -445,6 +445,7 @@ public class AppController {
             String dname = view.getString("dname");
             try {
                 AdminFunctions.addDepartment(dcode, dname);
+                changeView(viewDepartments());
             } catch (SQLIntegrityConstraintViolationException e1) {
                 e1.printStackTrace();
                 JOptionPane.showMessageDialog(
