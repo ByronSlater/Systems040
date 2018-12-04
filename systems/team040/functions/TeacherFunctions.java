@@ -74,9 +74,7 @@ public class TeacherFunctions {
 		return weightedMean;
 	}
 
-	public static int getLevel(Connection con, String studentPeriod) throws SQLException {
-		int level;
-
+	public static char getLevel(Connection con, String studentPeriod) throws SQLException {
 		String query = "" +
 				"SELECT Level" +
 				"  FROM DegreeLevel" +
@@ -88,12 +86,9 @@ public class TeacherFunctions {
 			pstmt.setString(1, studentPeriod);
 			try(ResultSet rs = pstmt.executeQuery()) {
 				rs.next();
-				level = rs.getInt("Level");
-
+				return rs.getString("Level").charAt(0);
 			}
 		}
-
-		return level;
 	}
 
 	public static boolean calculateIfPassed(String studentPeriod) throws SQLException {
