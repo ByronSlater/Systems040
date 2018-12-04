@@ -96,7 +96,7 @@ public class AdminFunctions {
 	 */
 	public static void addDegree(String degreeCode, String degreeName, int degreeLength) throws SQLException {
 		String degreeQuery = "INSERT INTO Degree VALUES (?, ?);";
-		String degreeLevelsQuery = "INSERT INTO DegreeLevel VALUES (?, ?, ?);";
+		String degreeLevelsQuery = "INSERT INTO DegreeLevel VALUES (?, ?, ?,?);";
 
 
 		try(Connection con = SQLFunctions.connectToDatabase();
@@ -112,6 +112,10 @@ public class AdminFunctions {
 				pstmt2.setString(1, i + degreeCode);
 				pstmt2.setString(2, degreeCode);
 				pstmt2.setString(3, Integer.toString(i));
+				if (i == (degreeLength - 1))
+					pstmt2.setBoolean(4, true);
+				else
+					pstmt2.setBoolean(4, false);
 				pstmt2.executeUpdate();
 			}
 
