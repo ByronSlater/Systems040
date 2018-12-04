@@ -31,7 +31,7 @@ public class AdminFunctions {
 	}
 	
 	/**
-	 * Function employed to update user passwords.
+	 * Function employed to update user passwords. The given password is put into the accounts database in hashed form.
 	 * @
 	 */
 	public static void changePassword(String username, char[] newPass) throws SQLException {
@@ -48,7 +48,7 @@ public class AdminFunctions {
 	}
 	
 	/**
-	 * Function employed to remove user accounts.
+	 * Function employed to remove a user account from the user account table given the username.
 	 * @
 	 */
 	public static void removeUser(String username) throws SQLException {
@@ -63,7 +63,7 @@ public class AdminFunctions {
 	}
 
 	/**
-	 * Function employed to add departments.
+	 * Function employed to add departments. Adds a department to the department table give a 3 letter code and a full name.
 	 */
 	public static void addDepartment(String deptCode, String deptName) throws SQLException {
 		String query = "INSERT INTO Department VALUES (?, ?);";
@@ -78,16 +78,21 @@ public class AdminFunctions {
 	}
 	
 	/**
-	 * Function employed to remove departments.
+	 * Function employed to remove departments. Department is deleted from the department table. This deletes any connected modules and links to degrees.
+	 * Any degrees where the deleted module is the primary department are deleted.
 	 */
 	public static void removeDepartment(String deptCode) throws SQLException {
 		String query = "DELETE FROM Department WHERE Dept = ?;";
+		String query2 = "DELETE Degree FROM Degree JOIN DegreeDepartments ON Degree.DegreeCode = DegreeDepartments.DegreeCode WHERE DegreeDepartments.Dept = ? and LeadDepartment = true;";
 
 		try(Connection con = SQLFunctions.connectToDatabase();
-			PreparedStatement pstmt = con.prepareStatement(query)) {
+			PreparedStatement pstmt = con.prepareStatement(query);
+			PreparedStatement pstmt2 = con.prepareStatement(query2)) {
 
 			pstmt.setString(1, deptCode);
 			pstmt.executeUpdate();
+			pstmt2.setString(1, deptCode);
+			pstmt2.executeUpdate();
 		}
 	}
 	
@@ -198,12 +203,11 @@ public class AdminFunctions {
 			pstmt.setString(4, timePeriod); //Time period is the CHAR A/S/U/Y (Autumn,Spring,Summer,Year)
 			pstmt.setString(5, moduleTitle);
 			pstmt.executeUpdate();
-			System.out.println("Module added successfully.");
 		}
 	}	
 	
 	/**
-	 * Function employed to remove modules.
+	 * Function employed to remove modules. This will delete all stored student grades for that module so must be used with caution
 	 */
 	public static void removeModule(String ModuleID) throws SQLException {
 		String query = "DELETE FROM Module WHERE ModuleID = ?";
