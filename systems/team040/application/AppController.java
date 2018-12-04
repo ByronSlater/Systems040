@@ -756,6 +756,8 @@ public class AppController {
                 pstmt.setString(1, moduleID);
                 pstmt.setString(2, view.getLatestStudentPeriod());
 
+                pstmt.executeUpdate();
+
                 JOptionPane.showMessageDialog(
                         null,
                         "Module registered!"
