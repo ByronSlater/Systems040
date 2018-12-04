@@ -36,7 +36,11 @@ public class ModuleRegisterView extends MyPanel {
                 }
             }
 
-            query = "SELECT ModuleID FROM DegreeModule WHERE DegreeLevel = ?;";
+            query = "" +
+                    "SELECT ModuleID " +
+                    "  FROM DegreeModule " +
+                    " WHERE DegreeLevel = ?" +
+                    "       AND isCore = 0;";
             ArrayList<String> availModules = SQLFunctions.queryToList(
                     con, query, rs -> rs.getString(1), s -> s.setString(1, degreeLevel)
             );
