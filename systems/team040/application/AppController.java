@@ -1,8 +1,5 @@
 package systems.team040.application;
 
-import jdk.internal.util.xml.impl.Input;
-import jdk.nashorn.internal.scripts.JO;
-import sun.rmi.runtime.Log;
 import systems.team040.functions.*;
 import systems.team040.gui.GUI;
 import systems.team040.gui.components.MyTextField;
@@ -17,7 +14,6 @@ import java.util.ArrayList;
 import java.util.function.Supplier;
 
 import static systems.team040.functions.AccountType.Admin;
-import static systems.team040.functions.AccountType.Teacher;
 
 public class AppController {
     private JFrame frame;
@@ -151,8 +147,60 @@ public class AppController {
                 new Pair<>("View/Edit modules", this::viewModules),
                 new Pair<>("View/Edit degrees", this::viewDegrees),
                 new Pair<>("View/Edit departments", this::viewDepartments),
-                new Pair<>("Link modules", this::linkModules)
+                new Pair<>("Link modules", this::linkModules),
+                new Pair<>("Link degrees/departments", this::selectDegree)
         );
+    }
+
+    private JPanel selectDegree() {
+        ArrayList<String> degrees = null;
+        try {
+            degrees = SQLFunctions.queryToList("SELECT DegreeCode FROM Degree;", rs -> rs.getString(1));
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        InputPanel view = new InputPanel(true);
+        view.getBackButton().addActionListener(e -> changeView(createAdminSwitchboard()));
+
+        view.addComboBox("Department", "dept", degrees);
+        view.addButton("Select Degree").addActionListener(e -> changeView(linkDegrees(view.getString("dept"))));
+
+        return view;
+    }
+
+    private JPanel linkDegrees(String dept) {
+        DegreeDepartmentLinkerView view = new DegreeDepartmentLinkerView(dept);
+
+        view.addButton("Link").addActionListener(e -> {
+            String degreeCode = view.getSelectedDegree();
+            String query = "INSERT INTO DegreeDepartments VALUES(?, ?, 0); ";
+
+            try(Connection con = SQLFunctions.connectToDatabase();
+                PreparedStatement pstmt = con.prepareStatement(query)) {
+
+                pstmt.setString(1, degreeCode);
+                pstmt.setString(2, dept);
+
+                pstmt.executeUpdate();
+
+            } catch (SQLIntegrityConstraintViolationException ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(
+                        null,
+                        "Degree is already linked with this module"
+                );
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(
+                        null,
+                        "Something went wrong"
+                );
+            }
+
+            changeView(linkDegrees(dept));
+        });
+
+        return view;
     }
 
     private MyPanel viewUsers() {

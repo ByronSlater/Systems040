@@ -4,7 +4,6 @@ import systems.team040.functions.SQLFunctions;
 import systems.team040.gui.GUI;
 
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.sql.SQLException;
 import java.util.ArrayList;
