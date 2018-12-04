@@ -16,6 +16,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 
 public class TeacherFunctions {
 	/**
@@ -44,7 +45,7 @@ public class TeacherFunctions {
 	 * Function employed to calculate students' weighted mean grades.
 	 * @throws SQLException
 	 */
-	public static float calculateWeightedMeanGrade(Connection con, String studentPeriod, int level) throws SQLException {
+	public static float calculateWeightedMeanGrade(Connection con, String studentPeriod, char level) throws SQLException {
 	    float weightedMean;
 	    String query;
 	    
@@ -65,13 +66,148 @@ public class TeacherFunctions {
 
             try(ResultSet rs = pstmt.executeQuery()) {
                 rs.next();
-                weightedMean = level == 4
+                weightedMean = level == '4'
                         ? (float)rs.getInt(1) / 18000
                         : (float)rs.getInt(1) / 12000;
 
             }
         }
 		return weightedMean;
+	}
+
+	private static int getDegreeLength(Connection con, String studentID) throws SQLException {
+		String query = "" +
+				"SELECT COUNT(*)" +
+				"  FROM StudentPeriod " +
+				"  JOIN DegreeLevel " +
+				"    ON DegreeLevel.DegreeLevel = StudentPeriod.DegreeLevel " +
+				" WHERE DegreeLevel.Level <> 'P'" +
+				"       AND StudentID = ?; ";
+
+		try(PreparedStatement pstmt = con.prepareStatement(query)) {
+			pstmt.setString(1, studentID);
+
+			try(ResultSet rs = pstmt.executeQuery()) {
+				rs.next();
+				return rs.getInt(1);
+			}
+
+		}
+	}
+
+	public static Grade gradeDegree(String studentID, boolean passedLast) throws SQLException {
+	    try(Connection con = SQLFunctions.connectToDatabase()) {
+	    	int lengthOfDegree;
+	    	float weightedMean;
+	    	boolean isPostGrad;
+
+	    	lengthOfDegree = getDegreeLength(con, studentID);
+
+	    	switch(lengthOfDegree) {
+				// one year masters
+	    		case 1:
+					weightedMean = 100 * calculateWeightedMeanGrade(con, "A" + studentID, '4');
+					if(weightedMean < 49.5) {
+						return Grade.Fail;
+					} else if(weightedMean < 59.5) {
+						return Grade.Pass;
+					} else if(weightedMean < 69.5) {
+						return Grade.Merit;
+					} else {
+						return Grade.Distinction;
+					}
+				// bsc
+				case 3:
+				    // if we didnt pass the last module then we just fail
+				    if(!passedLast) {
+				    	return Grade.Fail;
+					}
+
+				    String query = "" +
+							"SELECT StudentPeriod " +
+							"  FROM StudentPeriod " +
+							"  JOIN DegreeLevel " +
+							"       ON StudentPeriod.DegreeLevel = DegreeLevel.DegreeLevel " +
+							" WHERE DegreeLevel.Level <> 'p' " +
+							"       AND StudentID = ? " +
+							" ORDER BY YearTaken; ";
+
+					ArrayList<String> studentPeriods = SQLFunctions.queryToList(
+							con, query, rs -> rs.getString(1), s -> s.setString(1, studentID)
+					);
+
+					float totalMean = 0;
+
+					for(int i = 1; i < 3; ++i) {
+						String studentPeriod = studentPeriods.get(i);
+						totalMean += (Math.min(i, 2) * calculateWeightedMeanGrade(con, studentPeriod, '2'));
+					}
+					weightedMean = 100 * totalMean / 3;
+
+					// if last year was a retake we can only try for a pass
+					if(RegistrarFunctions.isRetake(con, studentPeriods.get(2))) {
+						if(weightedMean >= 44.5) {
+							return Grade.Pass;
+						} else {
+							return Grade.Fail;
+						}
+					}
+
+
+					if (weightedMean < 39.5) {
+						return Grade.Fail;
+					} else if (weightedMean < 44.5) {
+						return Grade.Pass;
+					} else if (weightedMean < 49.5) {
+						return Grade.ThirdClass;
+					} else if (weightedMean < 59.5) {
+						return Grade.LowerSecond;
+					} else if (weightedMean < 69.5) {
+						return Grade.UpperSecond;
+					} else {
+						return Grade.FirstClass;
+					}
+
+				case 4:
+					// if we didn't pass the last grade then we get the equiv bsc
+					if(!passedLast) {
+						return Grade.EquivBSC;
+					}
+
+					query = "" +
+							"SELECT StudentPeriod " +
+							"  FROM StudentPeriod " +
+							"  JOIN DegreeLevel " +
+							"       ON StudentPeriod.DegreeLevel = DegreeLevel.DegreeLevel " +
+							" WHERE DegreeLevel.Level <> 'p' " +
+							"       AND StudentID = ? " +
+							" ORDER BY YearTaken; ";
+
+					studentPeriods = SQLFunctions.queryToList(
+							con, query, rs -> rs.getString(1), s -> s.setString(1, studentID)
+					);
+
+					totalMean = 0;
+
+					for(int i = 1; i < 4; ++i) {
+						String studentPeriod = studentPeriods.get(i);
+						totalMean += (Math.min(i, 2) * calculateWeightedMeanGrade(con, studentPeriod, i == 3 ? '4' : '2'));
+					}
+					weightedMean = 100 * totalMean / 5;
+
+					if(weightedMean < 49.5) {
+						return Grade.Fail;
+					} else if(weightedMean < 59.5) {
+						return Grade.LowerSecond;
+					} else if(weightedMean < 69.5) {
+						return Grade.UpperSecond;
+					} else {
+						return Grade.FirstClass;
+					}
+					default:
+						throw new IllegalStateException("Wrong number of degree levels found");
+			}
+		}
 	}
 
 	public static char getLevel(Connection con, String studentPeriod) throws SQLException {
@@ -155,7 +291,7 @@ public class TeacherFunctions {
 	}
 
 	public enum ProgressReturn {
-		Failed, Progressed, NotGraded, NotEnoughCredits;
+		Failed, Progressed, NotGraded, NotEnoughCredits, PassedAndFinished, FailedAndFinished;
 	}
 
 	/**
@@ -266,12 +402,13 @@ public class TeacherFunctions {
 				try(PreparedStatement pstmt = con.prepareStatement(query)) {
 					pstmt.setInt(1, currentYearTaken + 1);
 					pstmt.setString(2, degreeCode);
-
-					System.out.println(pstmt);
 					try(ResultSet rs = pstmt.executeQuery()) {
-					    // assume we have already checked that this is not the last level of the degree
-						rs.next();
+					    if(!rs.next()) {
+					    	return ProgressReturn.PassedAndFinished;
+						}
                         nextDegreeLevel = rs.getString("DegreeLevel");
+
+						System.out.println(nextDegreeLevel);
 					}
 				}
 
@@ -306,6 +443,10 @@ public class TeacherFunctions {
 				return ProgressReturn.Progressed;
 
 			} else {
+				if(RegistrarFunctions.isRetake(con, studentPeriod)) {
+					return ProgressReturn.FailedAndFinished;
+				}
+
 				// we didn't pass so we add a new studentperiod at the same level and carry forward grades
 				// create new studentPeriod at same level
 				query = "" +

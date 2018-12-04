@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.function.Supplier;
 
 import static systems.team040.functions.AccountType.Admin;
+import static systems.team040.functions.AccountType.Teacher;
 
 public class AppController {
     private JFrame frame;
@@ -823,6 +824,7 @@ public class AppController {
                 // first we find out what the students latest study period is
                 String query = "SELECT MAX(StudentPeriod) FROM StudentPeriod WHERE StudentID = ?;";
                 String studentPeriod;
+                Grade g = null;
 
                 try(Connection con = SQLFunctions.connectToDatabase();
                     PreparedStatement pstmt = con.prepareStatement(query)) {
@@ -835,6 +837,7 @@ public class AppController {
 
 
                     TeacherFunctions.ProgressReturn ret = TeacherFunctions.progressToNextPeriod(studentPeriod);
+                    System.out.println(ret);
 
                     switch (ret) {
                         case NotGraded:
@@ -864,7 +867,46 @@ public class AppController {
                             );
                             changeView(createTeacherView());
                             return;
+                        case PassedAndFinished:
+                            g = TeacherFunctions.gradeDegree(studentID, true);
+                            break;
+                        case FailedAndFinished:
+                            g = TeacherFunctions.gradeDegree(studentID, false);
                     }
+                    String message = "Degree has finished, student attained:\n";
+
+                    switch(g) {
+                        case Pass:
+                            message += "a pass";
+                            break;
+                        case Merit:
+                            message += "a merit";
+                            break;
+                        case FirstClass:
+                            message += "a first class honours";
+                            break;
+                        case UpperSecond:
+                            message += "an upper second";
+                            break;
+                        case LowerSecond:
+                            message += "a lower second";
+                            break;
+                        case ThirdClass:
+                            message += "a third class";
+                            break;
+                        case Distinction:
+                            message += "a distinction";
+                            break;
+                        case Fail:
+                            message += "an overall fail";
+                            break;
+                        case EquivBSC:
+                            message += "a fail at the fourth level of their masters, achieving the corresponding" +
+                                    "bsc.";
+                            break;
+                    }
+                    JOptionPane.showMessageDialog(null, message);
+
                 } catch (SQLException e1) {
                     e1.printStackTrace();
                     JOptionPane.showMessageDialog(

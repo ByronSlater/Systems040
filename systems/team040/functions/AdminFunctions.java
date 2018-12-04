@@ -108,7 +108,7 @@ public class AdminFunctions {
 			pstmt1.executeUpdate();
 			
 			
-			for(int i = 1; i <= actualLength; i++){
+			for(int i = 1; i <= actualLength; i++) {
 				
 				pstmt2.setString(2, actualDegreeCode);
 				if (i == (actualLength - 1) && (hasIndustryYear)) {
@@ -117,13 +117,15 @@ public class AdminFunctions {
 				} else if ((i == actualLength) && (hasIndustryYear)){
 					pstmt2.setString(3, Integer.toString(i-1));
 					pstmt2.setString(1, i + actualDegreeCode);
-				} else
+				} else {
 					pstmt2.setString(3, Integer.toString(i));
 					pstmt2.setString(1, i + actualDegreeCode);
-				if (degreeLength == 1)
+				}
+				if (degreeLength == 1) {
 					pstmt2.setInt(4, 4);
-				else
+				} else {
 					pstmt2.setInt(4, i);
+				}
 				pstmt2.executeUpdate();
 			}
 

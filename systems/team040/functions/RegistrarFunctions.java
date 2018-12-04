@@ -164,7 +164,7 @@ public class RegistrarFunctions {
             studentPstmt.setString(7, username);
             studentPstmt.executeUpdate();
 
-            //Gives the student a starting student study period with value A
+            // Gives the student a starting student study period with value A
             studentPeriodPstmt.setString(1, 'A' + studentID);
             studentPeriodPstmt.setString(2, "A");
             studentPeriodPstmt.setString(3, '1' + degree);
