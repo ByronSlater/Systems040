@@ -432,6 +432,7 @@ public class AppController {
             String dcode = view.getString("dcode");
             try {
                 AdminFunctions.removeDegree(dcode);
+                changeView(viewDegrees());
             } catch (SQLException e1) {
                 e1.printStackTrace();
                 JOptionPane.showMessageDialog(
