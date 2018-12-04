@@ -344,33 +344,59 @@ public class AppController {
         InputPanel view = new InputPanel(true);
         view.getBackButton().addActionListener(e -> changeView(viewDegrees()));
 
-        view.addStringInput(
-                "Degree Code",
-                "dcode",
-                new MyTextField(".{1,7}"),
-                JTextComponent::getText
-        );
+        ArrayList<String> departments = null;
+        try {
+            departments = SQLFunctions.queryToList("SELECT Dept FROM Department;", rs -> rs.getString(1));
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(
+                    null, "Something went wrong"
+            );
+            e.printStackTrace();
+        }
+        view.addComboBox("Department", "dept", departments);
+
+
+        ArrayList<String> bools = new ArrayList<>();
+        bools.add("False");
+        bools.add("True");
+
+        view.addComboBox("Has Placement?", "placement", bools);
+
+        view.addStringInput("Name", "name", new MyTextField(".+"), JTextField::getText);
 
         view.addStringInput(
-                "Degree Name",
-                "dname",
-                new MyTextField(".+"),
-                JTextComponent::getText
+                "Numeric Code",
+                "numcode",
+                new MyTextField("\\d{2}"),
+                JTextField::getText
         );
+
 
         view.addNumericInput(
-                "Degree Length",
+                "Degree Length (1/3/4), excludes year in industry if selected",
                 "dlen",
-                new MyTextField("\\d+"),
+                new MyTextField("[134]"),
                 mtf -> Integer.parseInt(mtf.getText())
         );
 
         view.addButton("Add").addActionListener(e -> {
-            String dcode = view.getString("dcode");
-            String dname = view.getString("dname");
-            int dlen = view.getInteger("dlwn");
+            String numCode = view.getString("numcode");
+            boolean hasPlacement = view.getString("placement").equals("True");
+            String dept = view.getString("dept");
+            String name = view.getString("name");
+            int dlen = view.getInteger("dlen");
+
+            String degreeCode = dept + (dlen == 1 ? "P" : "U") + numCode;
+
+            if(dlen == 1 && hasPlacement) {
+                JOptionPane.showMessageDialog(
+                        null, "Can't have a placement year on a 1 year degree!"
+                );
+            }
+
             try {
-                AdminFunctions.addDegree(dcode, dname, dlen);
+                AdminFunctions.addDegree(degreeCode, name, dlen, hasPlacement);
+                changeView(viewDegrees());
             } catch (SQLException e1) {
                 e1.printStackTrace();
                 JOptionPane.showMessageDialog(
