@@ -167,7 +167,7 @@ public class RegistrarFunctions {
 	 * Function employed to remove student details. Takes the student username and deletes them for the UserAccount table. 
 	 * This cascades and deletes the user from the system.
 	 */
-	public static void removeStudent(String Username) {
+	public static void removeStudent(String username) {
 	    Connection con = null;
 	    PreparedStatement pstmt = null;
 
@@ -175,7 +175,7 @@ public class RegistrarFunctions {
 		    String query = "DELETE FROM UserAccount WHERE Username = ?;";
 			con = SQLFunctions.connectToDatabase();			
 			pstmt = con.prepareStatement(query);
-			pstmt.setString(1, Username);
+			pstmt.setString(1, username);
 			pstmt.executeUpdate();
 		}
 		catch (SQLException ex) {

@@ -838,7 +838,7 @@ public class AppController {
 
         try {
             ArrayList<String> usernames = SQLFunctions.queryToList(
-                    "SELECT StudentID FROM Student;",
+                    "SELECT Username FROM Student;",
                     rs -> rs.getString(1)
             );
 
@@ -851,9 +851,11 @@ public class AppController {
                     "Couldn't get usernames: " + e.getCause().getMessage()
             );
         }
-        view.addButton("Delete").addActionListener(
-                e -> RegistrarFunctions.removeStudent(view.getString("username"))
-        );
+        view.addButton("Delete").addActionListener(e -> {
+            RegistrarFunctions.removeStudent(view.getString("username"));
+            JOptionPane.showMessageDialog(null, "Deleted!");
+            changeView(registrarHome());
+        });
 
         return view;
     }
