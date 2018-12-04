@@ -221,6 +221,8 @@ public class AppController {
             changeView(linkDegrees(dept));
         });
 
+        view.getBackButton().addActionListener(e -> changeView(selectDegree()));
+
         return view;
     }
 
