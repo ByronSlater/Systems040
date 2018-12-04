@@ -540,7 +540,7 @@ public class AppController {
             e.printStackTrace();
         }
 
-        view.addButton("Go to department").addActionListener(e -> changeView(addModulesToDegree(view.getString("degree"))));
+        view.addButton("Go to DegreeLevel").addActionListener(e -> changeView(addModulesToDegree(view.getString("degree"))));
         return view;
     }
 
