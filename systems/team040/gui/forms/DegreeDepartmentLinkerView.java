@@ -29,7 +29,7 @@ public class DegreeDepartmentLinkerView extends MyPanel {
 
             centerPanel.add(new JScrollPane(new JTable(GUI.queryToTable(query, s -> s.setString(1, dept)))));
 
-            query = "SELECT DegreeCode FROM DegreeORDER BY DegreeCode;";
+            query = "SELECT DegreeCode FROM Degree ORDER BY DegreeCode;";
             ArrayList<String> degrees = SQLFunctions.queryToList(query, rs -> rs.getString("DegreeCode"));
 
             degreeSelector = new JComboBox<>();

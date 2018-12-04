@@ -1,3 +1,4 @@
+package systems.team040.functions;
 /*
  * RegistrarFunctions.java
  * @author Matt Prestwich
@@ -5,11 +6,6 @@
  * @author James Taylor
  */
 
-/**
- * A class containing all the functions available to registrar accounts.
- */
-
-package systems.team040.functions;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -17,6 +13,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
+/**
+ * A class containing all the functions available to registrar accounts.
+ */
 public class RegistrarFunctions {
     /**
      * Gets the next highest registration number
@@ -340,3 +339,4 @@ public class RegistrarFunctions {
         return creditTotal;
     }
 }
+

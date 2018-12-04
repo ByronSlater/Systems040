@@ -153,16 +153,16 @@ public class AppController {
     }
 
     private JPanel selectDegree() {
-        ArrayList<String> degrees = null;
+        ArrayList<String> depts = null;
         try {
-            degrees = SQLFunctions.queryToList("SELECT DegreeCode FROM Degree;", rs -> rs.getString(1));
+            depts = SQLFunctions.queryToList("SELECT Dept FROM Department;", rs -> rs.getString(1));
         } catch (SQLException e) {
             e.printStackTrace();
         }
         InputPanel view = new InputPanel(true);
         view.getBackButton().addActionListener(e -> changeView(createAdminSwitchboard()));
 
-        view.addComboBox("Department", "dept", degrees);
+        view.addComboBox("Department", "dept", depts);
         view.addButton("Select Degree").addActionListener(e -> changeView(linkDegrees(view.getString("dept"))));
 
         return view;
@@ -194,6 +194,27 @@ public class AppController {
                 JOptionPane.showMessageDialog(
                         null,
                         "Something went wrong"
+                );
+            }
+
+            changeView(linkDegrees(dept));
+        });
+
+        view.addButton("Unlink").addActionListener(e -> {
+            String query = "" +
+                    "DELETE FROM DegreeDepartments WHERE DegreeCode = ? AND Dept = ? AND NOT LeadDepartment;";
+
+            try(Connection con = SQLFunctions.connectToDatabase();
+                PreparedStatement pstmt = con.prepareStatement(query)) {
+
+                pstmt.setString(1, view.getSelectedDegree());
+                pstmt.setString(2, dept);
+
+                pstmt.executeUpdate();
+            } catch (SQLException e1) {
+                e1.printStackTrace();
+                JOptionPane.showMessageDialog(
+                        null, "Something went wrong"
                 );
             }
 
